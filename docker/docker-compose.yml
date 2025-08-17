@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  test-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    ports:
+      - "8000:8000"
+    environment:
+      # Server configuration
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - SERVER_MAX_CONCURRENCY=50
+      - SERVER_REQUEST_TIMEOUT=30
+      - SERVER_CACHE_MAX_SIZE=1000
+      - SERVER_CACHE_TTL_SECONDS=300
+      - SERVER_LOG_LEVEL=INFO
+      - SERVER_LOG_FORMAT=json
+      - SERVER_ENABLE_DOCS=true
+      - SERVER_CORS_ENABLED=true
+      - SERVER_CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import httpx; import asyncio; asyncio.run(httpx.get('http://localhost:8000/health').aread())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - test-network
+
+  test-server-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    ports:
+      - "8001:8000"
+    environment:
+      # Development configuration with more verbose logging
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - SERVER_MAX_CONCURRENCY=10
+      - SERVER_REQUEST_TIMEOUT=10
+      - SERVER_CACHE_MAX_SIZE=100
+      - SERVER_CACHE_TTL_SECONDS=60
+      - SERVER_LOG_LEVEL=DEBUG
+      - SERVER_LOG_FORMAT=console
+      - SERVER_ENABLE_DOCS=true
+      - SERVER_CORS_ENABLED=true
+    volumes:
+      # Mount source code for development (requires rebuild for changes)
+      - ../server:/app/server:ro
+    command: ["/app/.venv/bin/python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    profiles:
+      - dev
+    networks:
+      - test-network
+
+  # Optional: Load testing service
+  load-test:
+    image: python:3.11-slim
+    depends_on:
+      test-server:
+        condition: service_healthy
+    environment:
+      - TARGET_URL=http://test-server:8000
+    volumes:
+      - ../tests:/tests:ro
+    command: >
+      sh -c "
+        curl -LsSf https://astral.sh/uv/install.sh | sh &&
+        export PATH=\"/root/.local/bin:\$PATH\" &&
+        uv --version &&
+        uv tool install httpx &&
+        /root/.local/bin/python -c \"
+import asyncio
+import httpx
+import time
+
+async def load_test():
+    async with httpx.AsyncClient() as client:
+        print('Starting load test...')
+        start = time.time()
+        
+        # Test concurrent requests
+        tasks = []
+        for i in range(100):
+            task = client.get('http://test-server:8000/msg?delay=50')
+            tasks.append(task)
+        
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        end = time.time()
+        success_count = sum(1 for r in responses if hasattr(r, 'status_code') and r.status_code == 200)
+        
+        print(f'Completed {len(responses)} requests in {end-start:.2f}s')
+        print(f'Success rate: {success_count}/{len(responses)} ({success_count/len(responses)*100:.1f}%)')
+
+asyncio.run(load_test())
+        \"
+      "
+    profiles:
+      - load-test
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+
+# Example usage:
+# Production: docker-compose up test-server
+# Development: docker-compose --profile dev up test-server-dev
+# Load testing: docker-compose --profile load-test up load-test

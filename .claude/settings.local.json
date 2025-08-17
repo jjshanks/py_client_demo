@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(time curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
