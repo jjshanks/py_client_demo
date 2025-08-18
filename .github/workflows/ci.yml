@@ -2,11 +2,11 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   release:
-    types: [ published ]
+    types: [published]
 
 env:
   PYTHON_VERSION: "3.11"
@@ -31,9 +31,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
-      - name: Run Black (code formatting)
-        run: uv run black --check --diff server/ tests/
-
       - name: Run Ruff (linting)
         run: uv run ruff check server/ tests/
 
@@ -47,7 +44,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,34 +137,34 @@ jobs:
 
           # Wait for health check
           sleep 10
-          
+
           # Test health endpoint
           curl -f http://localhost:8000/health || exit 1
-          
+
           # Test basic functionality
           response=$(curl -s http://localhost:8000/msg)
           echo "Response: $response"
-          
+
           # Verify response contains message_id
           echo "$response" | grep -q "message_id" || exit 1
-          
+
           # Test failure injection
           curl -X POST http://localhost:8000/fail/count/1
-          
+
           # This should fail
           status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/msg)
           if [ "$status_code" != "500" ]; then
             echo "Expected 500, got $status_code"
             exit 1
           fi
-          
+
           # This should succeed
           status_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/msg)
           if [ "$status_code" != "200" ]; then
             echo "Expected 200, got $status_code"
             exit 1
           fi
-          
+
           # Clean up
           docker stop test-server
           docker rm test-server
@@ -269,11 +266,11 @@ jobs:
                   tasks = [client.get("http://localhost:8000/msg") for _ in range(50)]
                   responses = await asyncio.gather(*tasks)
                   duration = time.time() - start
-                  
+
                   success_count = sum(1 for r in responses if r.status_code == 200)
                   print(f"Basic throughput: {success_count}/{len(responses)} requests in {duration:.2f}s")
                   print(f"Rate: {success_count/duration:.1f} req/s")
-                  
+
                   # Test 2: Idempotency performance
                   print("\nTesting idempotency performance...")
                   start = time.time()
@@ -281,13 +278,13 @@ jobs:
                   tasks = [client.get("http://localhost:8000/msg", headers=headers) for _ in range(20)]
                   responses = await asyncio.gather(*tasks)
                   duration = time.time() - start
-                  
+
                   # All should return the same message_id
                   message_ids = [r.json()["message_id"] for r in responses]
                   unique_ids = set(message_ids)
                   print(f"Idempotency: {len(unique_ids)} unique IDs from {len(responses)} requests")
                   print(f"Cache hit rate: {(len(responses)-len(unique_ids))/len(responses)*100:.1f}%")
-                  
+
                   # Test 3: Delay handling
                   print("\nTesting delay handling...")
                   delays = [50, 100, 200]  # ms

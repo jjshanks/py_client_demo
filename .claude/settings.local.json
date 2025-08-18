@@ -5,7 +5,13 @@
       "Bash(python -m pip install:*)",
       "Bash(pip install:*)",
       "Bash(python:*)",
-      "Bash(time curl:*)"
+      "Bash(time curl:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(make:*)"
     ],
     "deny": [],
     "ask": []

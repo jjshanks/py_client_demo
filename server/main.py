@@ -3,23 +3,24 @@
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional
-import uvicorn
+
+import structlog
 import typer
-from fastapi import FastAPI, Depends
+import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from server.config import ServerConfig, get_config
-from server.state import ServerState
 from server.cache import IdempotencyCache
+from server.config import ServerConfig, get_config
+from server.endpoints import core, failure, health
+from server.logging_config import setup_logging
 from server.middleware import (
     ConcurrencyMiddleware,
-    TimeoutMiddleware,
+    ErrorHandlingMiddleware,
     RequestLoggingMiddleware,
-    ErrorHandlingMiddleware
+    TimeoutMiddleware,
 )
-from server.logging_config import setup_logging
-from server.endpoints import health, failure, core
-import structlog
+from server.state import ServerState
 
 # Global state instances
 server_state: Optional[ServerState] = None
@@ -32,29 +33,29 @@ concurrency_semaphore: Optional[asyncio.Semaphore] = None
 async def lifespan(app: FastAPI):
     """FastAPI lifespan context manager for startup and shutdown."""
     global server_state, idempotency_cache, config
-    
+
     # Startup
     config = get_config()
-    
+
     # Setup logging first
     setup_logging(config.log_level, config.log_format)
     logger = structlog.get_logger("server.startup")
-    
+
     # Initialize server state
     server_state = ServerState()
     # Set the existing semaphore to server state
     server_state.concurrency_semaphore = concurrency_semaphore
-    
+
     # Initialize idempotency cache
     idempotency_cache = IdempotencyCache(
         max_size=config.cache_max_size,
         ttl_seconds=config.cache_ttl_seconds
     )
-    
+
     # Store in app state for dependency injection
     app.state.server_state = server_state
     app.state.idempotency_cache = idempotency_cache
-    
+
     logger.info(
         "FastAPI test server starting up",
         config={
@@ -66,26 +67,26 @@ async def lifespan(app: FastAPI):
             "log_format": config.log_format
         }
     )
-    
+
     yield
-    
+
     # Shutdown
     logger.info("FastAPI test server shutting down")
-    
+
     if idempotency_cache:
         await idempotency_cache.clear()
-    
+
     logger.info("Server shutdown complete")
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     global concurrency_semaphore
-    
+
     # Initialize config and semaphore early
     config = get_config()
     concurrency_semaphore = asyncio.Semaphore(config.max_concurrency)
-    
+
     app = FastAPI(
         title="FastAPI Test Server",
         description="A professional-grade test server for validating async Python HTTP clients",
@@ -94,7 +95,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if config.enable_docs else None,
         redoc_url="/redoc" if config.enable_docs else None
     )
-    
+
     # Add CORS middleware if enabled
     if config.cors_enabled:
         origins = config.cors_origins or ["*"]
@@ -105,20 +106,20 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-    
+
     # Add custom middleware stack (order matters!)
     # 1. Error handling (outermost)
     app.add_middleware(ErrorHandlingMiddleware)
-    
+
     # 2. Request logging
     app.add_middleware(RequestLoggingMiddleware)
-    
+
     # 3. Timeout handling
     app.add_middleware(TimeoutMiddleware, timeout_seconds=config.request_timeout)
-    
+
     # 4. Concurrency limiting (innermost)
     app.add_middleware(ConcurrencyMiddleware, semaphore=concurrency_semaphore)
-    
+
     return app
 
 
@@ -151,7 +152,7 @@ def serve(
     workers: int = typer.Option(1, help="Number of worker processes")
 ):
     """Start the FastAPI test server."""
-    
+
     # Override environment config with CLI arguments if provided
     import os
     if max_concurrency is not None:
@@ -166,11 +167,11 @@ def serve(
         os.environ["SERVER_LOG_LEVEL"] = log_level
     if log_format is not None:
         os.environ["SERVER_LOG_FORMAT"] = log_format
-    
+
     # Override host/port with CLI args
     os.environ["SERVER_HOST"] = host
     os.environ["SERVER_PORT"] = str(port)
-    
+
     # Start the server
     uvicorn.run(
         "server.main:app",
@@ -187,7 +188,7 @@ def serve(
 def config_info():
     """Display current configuration."""
     config = get_config()
-    
+
     typer.echo("Current FastAPI Test Server Configuration:")
     typer.echo(f"  Host: {config.host}")
     typer.echo(f"  Port: {config.port}")

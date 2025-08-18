@@ -1,8 +1,9 @@
 """Failure injection endpoints for testing client resilience."""
 
-from fastapi import APIRouter, Depends, Path, HTTPException, Request
-from server.state import ServerState
 import structlog
+from fastapi import APIRouter, Depends, Path, Request
+
+from server.state import ServerState
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/fail", tags=["failure-injection"])
@@ -25,13 +26,13 @@ async def set_failure_count(
     This mode operates independently of duration-based failures.
     """
     await state.failure_manager.set_fail_count(count)
-    
+
     logger.info(
         "Failure count mode configured",
         fail_requests_count=count,
         endpoint="/fail/count"
     )
-    
+
     return {
         "message": f"Server will fail the next {count} requests",
         "fail_requests_count": count
@@ -50,13 +51,13 @@ async def set_failure_duration(
     This mode operates independently of count-based failures.
     """
     await state.failure_manager.set_fail_duration(seconds)
-    
+
     logger.info(
         "Failure duration mode configured",
         duration_seconds=seconds,
         endpoint="/fail/duration"
     )
-    
+
     return {
         "message": f"Server will fail requests for the next {seconds} seconds",
         "duration_seconds": seconds
@@ -72,9 +73,9 @@ async def reset_failures(state: ServerState = Depends(get_server_state)):
     The server will return to normal operation immediately.
     """
     await state.failure_manager.reset_failures()
-    
+
     logger.info("All failure modes reset", endpoint="/fail/reset")
-    
+
     return {
         "message": "All failure modes have been reset",
         "status": "normal_operation"
@@ -90,9 +91,9 @@ async def get_failure_status(state: ServerState = Depends(get_server_state)):
     Not part of the original spec but useful for debugging and monitoring.
     """
     status = await state.failure_manager.get_status()
-    
+
     logger.debug("Failure status requested", status=status)
-    
+
     return {
         "failure_status": status,
         "currently_failing": status["currently_failing"]

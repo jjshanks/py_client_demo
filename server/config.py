@@ -1,17 +1,18 @@
 """Configuration management using Pydantic Settings."""
 
 from typing import Optional
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
 class ServerConfig(BaseSettings):
     """Server configuration with environment variable support."""
-    
+
     # Core server settings
     host: str = Field(default="0.0.0.0", description="Host to bind the server to")
     port: int = Field(default=8000, description="Port to bind the server to")
-    
+
     # Concurrency and timeout settings
     max_concurrency: int = Field(
         default=50,
@@ -25,7 +26,7 @@ class ServerConfig(BaseSettings):
         ge=1,
         le=300
     )
-    
+
     # Cache settings
     cache_max_size: int = Field(
         default=1000,
@@ -39,7 +40,7 @@ class ServerConfig(BaseSettings):
         ge=1,
         le=86400  # 24 hours max
     )
-    
+
     # Logging settings
     log_level: str = Field(
         default="INFO",
@@ -51,7 +52,7 @@ class ServerConfig(BaseSettings):
         description="Log format (json or console)",
         pattern="^(json|console)$"
     )
-    
+
     # Optional settings for advanced use cases
     enable_docs: bool = Field(
         default=True,
@@ -65,7 +66,7 @@ class ServerConfig(BaseSettings):
         default=None,
         description="Comma-separated list of allowed CORS origins"
     )
-    
+
     @field_validator('cors_origins')
     @classmethod
     def validate_cors_origins(cls, v):
@@ -73,7 +74,7 @@ class ServerConfig(BaseSettings):
         if v is None:
             return None
         return [origin.strip() for origin in v.split(',') if origin.strip()]
-    
+
     model_config = {
         "env_prefix": "SERVER_",
         "case_sensitive": False,

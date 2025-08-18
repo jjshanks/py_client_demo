@@ -2,7 +2,8 @@
 
 import logging
 import sys
-from typing import Any, Dict
+from typing import Any
+
 import structlog
 from structlog.types import EventDict
 
@@ -30,14 +31,14 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
     """
     # Convert string level to logging constant
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
-    
+
     # Configure standard library logging
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=numeric_level,
     )
-    
+
     # Configure structlog processors
     shared_processors = [
         structlog.stdlib.filter_by_level,
@@ -49,7 +50,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ]
-    
+
     if log_format == "json":
         # JSON logging for production
         processors = shared_processors + [
@@ -61,7 +62,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
             structlog.processors.TimeStamper(fmt="ISO"),
             structlog.dev.ConsoleRenderer(colors=True)
         ]
-    
+
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.stdlib.BoundLogger,
@@ -69,7 +70,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
         context_class=dict,
         cache_logger_on_first_use=True,
     )
-    
+
     # Silence some noisy loggers in production
     if log_level != "DEBUG":
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
@@ -83,14 +84,14 @@ def get_logger(name: str = None) -> structlog.BoundLogger:
 
 class LoggingConfig:
     """Centralized logging configuration for different components."""
-    
+
     SERVER_STARTUP = "server.startup"
     SERVER_SHUTDOWN = "server.shutdown"
     REQUEST_HANDLER = "request.handler"
     CACHE_OPERATIONS = "cache.operations"
     FAILURE_INJECTION = "failure.injection"
     CONCURRENCY = "concurrency.management"
-    
+
     @staticmethod
     def get_component_logger(component: str) -> structlog.BoundLogger:
         """Get a logger bound to a specific component."""

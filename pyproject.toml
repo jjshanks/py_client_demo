@@ -3,16 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "fastapi-test-server"
+name = "fastapi-test-server-client"
 version = "0.1.0"
-description = "A professional-grade FastAPI test server for validating async Python HTTP clients"
+description = "A complete testing environment with professional-grade FastAPI test server and resilient HTTP client library"
 authors = [
     {name = "FastAPI Test Server", email = "test@example.com"},
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
-keywords = ["fastapi", "testing", "http", "async", "client"]
+keywords = ["fastapi", "testing", "http", "async", "client", "resilience", "circuit-breaker", "retry"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: FastAPI",
@@ -35,6 +35,8 @@ dependencies = [
     "pydantic-settings>=2.1.0",
     "structlog>=23.2.0",
     "typer>=0.9.0",
+    "httpx>=0.25.0",
+    "tenacity>=8.2.0",
 ]
 
 [project.optional-dependencies]
@@ -43,7 +45,6 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "httpx>=0.25.0",
     "pytest-cov>=4.1.0",
-    "black>=23.12.0",
     "ruff>=0.1.8",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
@@ -58,25 +59,7 @@ Issues = "https://github.com/example/fastapi-test-server/issues"
 test-server = "server.main:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["server"]
-
-[tool.black]
-line-length = 88
-target-version = ['py39']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
+packages = ["server", "client"]
 
 [tool.ruff]
 target-version = "py39"
@@ -91,7 +74,6 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long, handled by black
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
 ]
@@ -116,9 +98,14 @@ minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "performance: marks tests as performance benchmarks",
+    "skipif_no_server: marks tests that require a running server",
+    "integration: marks tests as integration tests"
+]
 
 [tool.coverage.run]
-source = ["server"]
+source = ["server", "client"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
@@ -141,7 +128,6 @@ dev-dependencies = [
     "pytest-asyncio>=0.21.0",
     "httpx>=0.25.0",
     "pytest-cov>=4.1.0",
-    "black>=23.12.0",
     "ruff>=0.1.8",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",

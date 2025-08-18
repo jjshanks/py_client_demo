@@ -3,10 +3,12 @@
 import asyncio
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, Header, HTTPException, Request
-from server.state import ServerState
-from server.cache import IdempotencyCache
+
 import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+
+from server.cache import IdempotencyCache
+from server.state import ServerState
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -42,7 +44,7 @@ async def get_message(
     7. Return response
     8. Release semaphore (handled by middleware)
     """
-    
+
     # Step 2: Check failure state BEFORE idempotency check
     should_fail = await state.failure_manager.should_fail()
     if should_fail:
@@ -55,7 +57,7 @@ async def get_message(
             status_code=500,
             detail="Induced server failure"
         )
-    
+
     # Step 4: Check idempotency cache if X-Request-ID is provided
     if x_request_id:
         cached_response = await cache.get_response(x_request_id)
@@ -66,12 +68,12 @@ async def get_message(
                 message_id=cached_response
             )
             return {"message_id": cached_response}
-        
+
         logger.debug(
             "Cache miss for request ID",
             request_id=x_request_id
         )
-    
+
     # Step 6: Apply delay if requested
     if delay > 0:
         logger.debug(
@@ -80,10 +82,10 @@ async def get_message(
             request_id=x_request_id
         )
         await asyncio.sleep(delay / 1000.0)  # Convert ms to seconds
-    
+
     # Step 7: Generate new UUID
     message_id = str(uuid.uuid4())
-    
+
     # Step 8: Cache response if X-Request-ID was provided
     if x_request_id:
         await cache.store_response(x_request_id, message_id)
@@ -92,7 +94,7 @@ async def get_message(
             request_id=x_request_id,
             message_id=message_id
         )
-    
+
     logger.debug(
         "Generated new message",
         message_id=message_id,
@@ -100,6 +102,6 @@ async def get_message(
         delay=delay,
         cached=x_request_id is not None
     )
-    
+
     # Step 9: Return response
     return {"message_id": message_id}

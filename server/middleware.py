@@ -4,26 +4,27 @@ import asyncio
 import time
 import uuid
 from typing import Callable
-from fastapi import Request, Response, HTTPException
+
+import structlog
+from fastapi import HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import structlog
 
 logger = structlog.get_logger()
 
 
 class ConcurrencyMiddleware(BaseHTTPMiddleware):
     """Middleware to limit concurrent requests using a semaphore."""
-    
+
     def __init__(self, app, semaphore: asyncio.Semaphore):
         super().__init__(app)
         self.semaphore = semaphore
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip concurrency limiting for health check
         if request.url.path == "/health":
             return await call_next(request)
-        
+
         # Wait to acquire semaphore slot
         logger.debug(
             "Waiting for concurrency slot",
@@ -31,7 +32,7 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
             method=request.method,
             available_slots=self.semaphore._value
         )
-        
+
         async with self.semaphore:
             logger.debug(
                 "Acquired concurrency slot",
@@ -39,7 +40,7 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 remaining_slots=self.semaphore._value
             )
-            
+
             try:
                 response = await call_next(request)
                 return response
@@ -53,16 +54,16 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Middleware to enforce request timeouts."""
-    
+
     def __init__(self, app, timeout_seconds: int):
         super().__init__(app)
         self.timeout_seconds = timeout_seconds
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip timeout for health check (should always be fast)
         if request.url.path == "/health":
             return await call_next(request)
-        
+
         try:
             # Wrap the request processing in a timeout
             response = await asyncio.wait_for(
@@ -85,15 +86,15 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware for structured request/response logging."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Generate correlation ID for this request
         correlation_id = str(uuid.uuid4())
-        
+
         # Extract key headers
         request_id = request.headers.get("X-Request-ID")
         user_agent = request.headers.get("User-Agent", "")
-        
+
         # Log incoming request
         start_time = time.time()
         logger.debug(
@@ -106,11 +107,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             user_agent=user_agent,
             client_host=request.client.host if request.client else None
         )
-        
+
         # Process request
         try:
             response = await call_next(request)
-            
+
             # Log successful response
             duration_ms = (time.time() - start_time) * 1000
             logger.debug(
@@ -122,11 +123,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 duration_ms=round(duration_ms, 2),
                 request_id=request_id
             )
-            
+
             # Add correlation ID to response headers for tracing
             response.headers["X-Correlation-ID"] = correlation_id
             return response
-            
+
         except Exception as exc:
             # Log failed request
             duration_ms = (time.time() - start_time) * 1000
@@ -145,7 +146,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """Middleware for consistent error handling and responses."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         try:
             return await call_next(request)
