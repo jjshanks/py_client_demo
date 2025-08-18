@@ -1,8 +1,6 @@
 """Integration tests for all API endpoints."""
 
 import asyncio
-
-# Import the app but override config for testing
 import os
 import time
 import uuid
@@ -11,6 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
+from server.main import app
+
+# Configure test environment before importing app
 os.environ.update(
     {
         "SERVER_MAX_CONCURRENCY": "10",
@@ -21,8 +22,6 @@ os.environ.update(
         "SERVER_LOG_FORMAT": "console",
     }
 )
-
-from server.main import app
 
 
 @pytest.fixture
@@ -218,7 +217,7 @@ class TestFailureInjection:
         client.post("/fail/count/3")
 
         # First 3 requests should fail
-        for i in range(3):
+        for _ in range(3):
             response = client.get("/msg")
             assert response.status_code == 500
             data = response.json()
@@ -286,14 +285,15 @@ class TestSpecificationFlow:
         assert response.status_code == 200
 
         # Step 4: Validate failure (3 requests should fail)
-        for i in range(3):
+        for _ in range(3):
             response = await async_client.get("/msg")
             assert response.status_code == 500
 
         # Step 5: Validate recovery (4th request should succeed)
         response = await async_client.get("/msg")
         assert response.status_code == 200
-        uuid_after_recovery = response.json()["message_id"]
+        # UUID should be different after recovery
+        response.json()["message_id"]
 
         # Step 6: Validate idempotency
         headers = {"X-Request-ID": "test-123"}
@@ -336,7 +336,7 @@ class TestConcurrencyLimiting:
         # Start multiple concurrent requests with delays
         # With max_concurrency=10 in test config, all should eventually complete
         tasks = []
-        for i in range(15):  # More than max concurrency
+        for _ in range(15):  # More than max concurrency
             task = async_client.get("/msg?delay=100")  # 100ms delay each
             tasks.append(task)
 

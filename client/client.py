@@ -175,13 +175,14 @@ class ResilientClient:
             # Log successful acquisition with remaining slots
             remaining_slots = self._semaphore._value
             self.logger.debug(
-                f"Operation [{request_id}] acquired a connection slot. {remaining_slots} slots remaining"
+                f"Operation [{request_id}] acquired a connection slot. "
+                f"{remaining_slots} slots remaining"
             )
 
         except asyncio.TimeoutError as e:
             raise PoolTimeoutError(
-                f"Failed to acquire connection slot within {self.config.bulkhead.acquisition_timeout}s - "
-                "client is saturated"
+                f"Failed to acquire connection slot within "
+                f"{self.config.bulkhead.acquisition_timeout}s - client is saturated"
             ) from e
 
     async def _make_request_with_resilience(
@@ -213,7 +214,7 @@ class ResilientClient:
         await self._acquire_semaphore_with_timeout(request_id)
 
         try:
-            # Define the HTTP operation with retry logic inside circuit breaker protection
+            # Define the HTTP operation with retry logic inside circuit breaker
             async def http_operation_with_retries():
                 # Define the actual HTTP operation
                 async def single_http_request():
@@ -241,7 +242,7 @@ class ResilientClient:
                 return await retry_wrapped()
 
             # Apply circuit breaker protection to the entire retry loop
-            # This ensures the entire retry sequence counts as one operation for the circuit breaker
+            # This ensures retry sequence counts as one operation for circuit breaker
             return await self._circuit_breaker.call(http_operation_with_retries)
 
         except RetryError as e:

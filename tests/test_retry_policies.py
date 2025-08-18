@@ -188,11 +188,11 @@ class TestRetryPolicy:
         for error_class in connection_errors:
             call_count = 0
 
-            async def failing_operation():
+            async def failing_operation(exc_class=error_class):
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
-                    raise error_class
+                    raise exc_class
                 return "recovered"
 
             wrapped = retry_policy.wrap_operation(failing_operation)
@@ -210,10 +210,10 @@ class TestRetryPolicy:
         for error_class in status_errors:
             call_count = 0
 
-            async def failing_operation():
+            async def failing_operation(exc_class=error_class):
                 nonlocal call_count
                 call_count += 1
-                raise error_class
+                raise exc_class
 
             wrapped = retry_policy.wrap_operation(failing_operation)
 
@@ -233,7 +233,7 @@ class TestRetryDecoratorEdgeCases:
         )
 
         call_count = 0
-        wait_times = []
+        # Track jitter timing behavior
 
         async def failing_operation():
             nonlocal call_count

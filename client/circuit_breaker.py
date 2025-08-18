@@ -95,10 +95,13 @@ class CircuitBreaker:
                 if self.failure_count >= self.config.failure_threshold:
                     if self.state != CircuitState.OPEN:
                         self.state = CircuitState.OPEN
-                        self.logger.warning(
-                            f"Circuit breaker OPENED after {self.failure_count} failures - "
-                            f"failing fast for {self.config.recovery_timeout}s"
+                        timeout = self.config.recovery_timeout
+                        failures = self.failure_count
+                        msg = (
+                            f"Circuit breaker OPENED after {failures} failures - "
+                            f"failing fast for {timeout}s"
                         )
+                        self.logger.warning(msg)
 
             # Re-raise the connection error
             raise

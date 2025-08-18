@@ -41,7 +41,7 @@ class TTLCache:
         self._data: OrderedDict[str, CacheEntry] = OrderedDict()
         self._lock = asyncio.Lock()
         self._last_cleanup = time.time()
-        # Run cleanup every 60 seconds or when 10% of TTL has passed, whichever is shorter
+        # Run cleanup every 60s or when 10% of TTL has passed, whichever is shorter
         self._cleanup_interval = min(60, max(10, ttl_seconds * 0.1))
 
     async def get(self, key: str) -> Optional[Any]:

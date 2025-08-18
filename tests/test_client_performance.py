@@ -106,7 +106,7 @@ class TestConnectionPoolingPerformance:
 
             async with create_resilient_client(performance_config) as client:
                 # Run multiple batches to get stable measurements
-                for batch in range(3):
+                for _ in range(3):
                     start = time.perf_counter()
 
                     # Make concurrent requests
@@ -184,7 +184,7 @@ class TestResiliencePatternOverhead:
         print(f"  Plain client avg:     {plain_avg:.4f}s")
         print(f"  Overhead:             {overhead_percent:.1f}%")
 
-        # Overhead should be reasonable (typically < 25% for successful requests in test environment)
+        # Overhead should be reasonable (typically < 25% for successful requests)
         assert (
             overhead_percent < 25
         ), f"Resilience overhead too high: {overhead_percent:.1f}%"
@@ -239,7 +239,8 @@ class TestResiliencePatternOverhead:
             print("\nRetry Performance Analysis:")
             print(f"  Total time for {len(responses)} requests: {total_time:.2f}s")
             print(
-                f"  Average time per request (with retries): {avg_time_per_request:.3f}s"
+                f"  Average time per request (with retries): "
+                f"{avg_time_per_request:.3f}s"
             )
 
             # Should complete in reasonable time despite retries

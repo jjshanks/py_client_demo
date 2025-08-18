@@ -88,7 +88,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="FastAPI Test Server",
-        description="A professional-grade test server for validating async Python HTTP clients",
+        description="Professional-grade test server for validating async HTTP clients",
         version="0.1.0",
         lifespan=lifespan,
         docs_url="/docs" if config.enable_docs else None,

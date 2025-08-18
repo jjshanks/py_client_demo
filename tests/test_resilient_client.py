@@ -138,19 +138,7 @@ class TestExceptionMapping:
             599: Mock(status_code=599),
         }
 
-        expected_mappings = {
-            401: AuthenticationError,
-            403: AuthenticationError,
-            404: NotFoundError,
-            400: InvalidRequestError,
-            422: InvalidRequestError,
-            408: httpx.HTTPStatusError,  # We don't have ServerTimeoutError in our mapping yet
-            502: httpx.HTTPStatusError,  # We don't have ServiceUnavailableError in our mapping yet
-            503: httpx.HTTPStatusError,
-            504: httpx.HTTPStatusError,
-            500: ServerError,
-            599: ServerError,
-        }
+        # Test that HTTP status codes map to correct exception types
 
         for status_code, response in responses.items():
             status_error = httpx.HTTPStatusError(
@@ -313,7 +301,7 @@ class TestHTTPMethods:
 
     async def test_all_http_methods(self, client_config):
         """Test that all HTTP methods work correctly."""
-        methods_to_test = ["GET", "POST", "PUT", "DELETE"]
+        # Test that all HTTP methods work correctly
 
         with patch("httpx.AsyncClient.request") as mock_request:
             mock_response = Mock()
@@ -395,7 +383,7 @@ class TestResilienceIntegration:
                 # Should have tried max_attempts times
                 assert call_count == client_config.retry.max_attempts
 
-                # Circuit breaker failure count should be 1 (one logical operation failed)
+                # Circuit breaker failure count should be 1 (one logical operation)
                 assert client._circuit_breaker.failure_count == 1
 
     async def test_bulkhead_with_retries(self, client_config):
@@ -437,7 +425,7 @@ class TestResilienceIntegration:
                 await client.get("/test")
 
                 # Should have logged initialization
-                info_calls = [call for call in mock_logger.info.call_args_list]
+                info_calls = list(mock_logger.info.call_args_list)
                 assert any("initialized" in str(call) for call in info_calls)
 
 

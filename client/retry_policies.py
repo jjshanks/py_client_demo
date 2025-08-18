@@ -46,9 +46,11 @@ def create_retry_decorator(config: RetryConfig, request_id: str = None):
             attempt_num = retry_state.attempt_number
             next_wait = retry_state.next_action.sleep if retry_state.next_action else 0
 
+            exc_name = type(exception).__name__
             logger.debug(
-                f"Operation [{request_id}] failed with [{type(exception).__name__}: {exception}]. "
-                f"Retrying in {next_wait:.2f} seconds (Attempt {attempt_num} of {config.max_attempts})"
+                f"Operation [{request_id}] failed with [{exc_name}: {exception}]. "
+                f"Retrying in {next_wait:.2f} seconds "
+                f"(Attempt {attempt_num} of {config.max_attempts})"
             )
 
     # Configure wait strategy

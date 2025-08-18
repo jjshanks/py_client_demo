@@ -329,7 +329,7 @@ class TestEndToEndScenarios:
         async with create_resilient_client(client_config) as client:
             # Make several successful requests
             responses = []
-            for i in range(5):
+            for _ in range(5):
                 response = await client.get("/msg")
                 assert response.status_code == 200
                 responses.append(response.json()["message_id"])
