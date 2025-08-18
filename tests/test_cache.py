@@ -22,7 +22,7 @@ class TestCacheEntry:
         now = time.time()
         entry = CacheEntry(value="test", created_at=now - 10)  # 10 seconds old
 
-        assert entry.is_expired(5)   # Should be expired (older than 5s TTL)
+        assert entry.is_expired(5)  # Should be expired (older than 5s TTL)
         assert not entry.is_expired(15)  # Should not be expired (within 15s TTL)
 
 
@@ -149,6 +149,7 @@ class TestTTLCache:
     @pytest.mark.asyncio
     async def test_concurrent_access(self, cache):
         """Test thread safety under concurrent access."""
+
         async def worker(worker_id: int):
             """Worker function that performs cache operations."""
             for i in range(10):

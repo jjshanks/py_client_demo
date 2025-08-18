@@ -48,8 +48,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize idempotency cache
     idempotency_cache = IdempotencyCache(
-        max_size=config.cache_max_size,
-        ttl_seconds=config.cache_ttl_seconds
+        max_size=config.cache_max_size, ttl_seconds=config.cache_ttl_seconds
     )
 
     # Store in app state for dependency injection
@@ -64,8 +63,8 @@ async def lifespan(app: FastAPI):
             "cache_max_size": config.cache_max_size,
             "cache_ttl_seconds": config.cache_ttl_seconds,
             "log_level": config.log_level,
-            "log_format": config.log_format
-        }
+            "log_format": config.log_format,
+        },
     )
 
     yield
@@ -93,7 +92,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
         docs_url="/docs" if config.enable_docs else None,
-        redoc_url="/redoc" if config.enable_docs else None
+        redoc_url="/redoc" if config.enable_docs else None,
     )
 
     # Add CORS middleware if enabled
@@ -132,29 +131,36 @@ app.include_router(failure.router)
 app.include_router(health.router)
 
 
-
-
 # CLI interface using Typer
-cli = typer.Typer(name="test-server", help="FastAPI Test Server for async client validation")
+cli = typer.Typer(
+    name="test-server", help="FastAPI Test Server for async client validation"
+)
 
 
 @cli.command()
 def serve(
     host: str = typer.Option("0.0.0.0", help="Host to bind to"),
     port: int = typer.Option(8000, help="Port to bind to"),
-    max_concurrency: Optional[int] = typer.Option(None, help="Maximum concurrent requests"),
-    request_timeout: Optional[int] = typer.Option(None, help="Request timeout in seconds"),
+    max_concurrency: Optional[int] = typer.Option(
+        None, help="Maximum concurrent requests"
+    ),
+    request_timeout: Optional[int] = typer.Option(
+        None, help="Request timeout in seconds"
+    ),
     cache_max_size: Optional[int] = typer.Option(None, help="Maximum cache size"),
     cache_ttl_seconds: Optional[int] = typer.Option(None, help="Cache TTL in seconds"),
-    log_level: Optional[str] = typer.Option(None, help="Log level (DEBUG, INFO, WARNING, ERROR)"),
+    log_level: Optional[str] = typer.Option(
+        None, help="Log level (DEBUG, INFO, WARNING, ERROR)"
+    ),
     log_format: Optional[str] = typer.Option(None, help="Log format (json, console)"),
     reload: bool = typer.Option(False, help="Enable auto-reload for development"),
-    workers: int = typer.Option(1, help="Number of worker processes")
+    workers: int = typer.Option(1, help="Number of worker processes"),
 ):
     """Start the FastAPI test server."""
 
     # Override environment config with CLI arguments if provided
     import os
+
     if max_concurrency is not None:
         os.environ["SERVER_MAX_CONCURRENCY"] = str(max_concurrency)
     if request_timeout is not None:
@@ -180,7 +186,7 @@ def serve(
         reload=reload,
         workers=workers if not reload else 1,  # Reload mode requires single worker
         log_level="info",  # Let our structlog handle the actual logging levels
-        access_log=False  # We handle access logging in our middleware
+        access_log=False,  # We handle access logging in our middleware
     )
 
 

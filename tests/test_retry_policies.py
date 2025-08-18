@@ -32,7 +32,7 @@ class TestRetryDecorator:
             min_wait_seconds=0.1,  # Fast for testing
             max_wait_seconds=1.0,
             multiplier=2.0,
-            jitter=False  # Deterministic for testing
+            jitter=False,  # Deterministic for testing
         )
 
     async def test_successful_operation_no_retry(self, retry_config):
@@ -104,7 +104,7 @@ class TestRetryDecorator:
         # Should try max_attempts times
         assert call_count == retry_config.max_attempts
 
-    @patch('client.retry_policies.logging.getLogger')
+    @patch("client.retry_policies.logging.getLogger")
     async def test_retry_logging(self, mock_get_logger, retry_config):
         """Test that retry attempts are logged properly."""
         mock_logger = AsyncMock()
@@ -141,10 +141,7 @@ class TestRetryPolicy:
     def retry_config(self):
         """Retry configuration for testing."""
         return RetryConfig(
-            max_attempts=2,
-            min_wait_seconds=0.01,
-            max_wait_seconds=0.1,
-            jitter=False
+            max_attempts=2, min_wait_seconds=0.01, max_wait_seconds=0.1, jitter=False
         )
 
     @pytest.fixture
@@ -171,6 +168,7 @@ class TestRetryPolicy:
 
     async def test_wrap_operation_with_auto_request_id(self, retry_policy):
         """Test wrapping operation without providing request ID."""
+
         async def test_operation():
             return "success"
 
@@ -231,10 +229,7 @@ class TestRetryDecoratorEdgeCases:
     async def test_retry_with_jitter_enabled(self):
         """Test retry behavior with jitter enabled."""
         config = RetryConfig(
-            max_attempts=3,
-            min_wait_seconds=0.01,
-            max_wait_seconds=0.1,
-            jitter=True
+            max_attempts=3, min_wait_seconds=0.01, max_wait_seconds=0.1, jitter=True
         )
 
         call_count = 0
@@ -263,7 +258,9 @@ class TestRetryDecoratorEdgeCases:
 
     async def test_retry_preserves_original_exception_details(self):
         """Test that retry preserves original exception information."""
-        config = RetryConfig(max_attempts=2, min_wait_seconds=0.01, max_wait_seconds=0.1)
+        config = RetryConfig(
+            max_attempts=2, min_wait_seconds=0.01, max_wait_seconds=0.1
+        )
 
         original_response = "mock_response_object"
 

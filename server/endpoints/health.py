@@ -18,7 +18,7 @@ def get_server_state(request: Request) -> ServerState:
 async def health_check(state: ServerState = Depends(get_server_state)):
     """
     Health check endpoint.
-    
+
     Returns a simple OK status to confirm the server is running and responsive.
     This endpoint is not subject to concurrency limits or failure injections.
     """
@@ -26,7 +26,4 @@ async def health_check(state: ServerState = Depends(get_server_state)):
 
     logger.debug("Health check requested", uptime_seconds=round(uptime, 2))
 
-    return {
-        "status": "ok",
-        "uptime_seconds": round(uptime, 2)
-    }
+    return {"status": "ok", "uptime_seconds": round(uptime, 2)}

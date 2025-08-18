@@ -33,18 +33,22 @@ def performance_config(server_base_url):
     return ClientConfig(
         base_url=server_base_url,
         retry=RetryConfig(max_attempts=1),  # No retries for pure performance
-        circuit_breaker=CircuitBreakerConfig(failure_threshold=1000),  # Very high threshold
-        bulkhead=BulkheadConfig(max_concurrency=50, acquisition_timeout=10.0)
+        circuit_breaker=CircuitBreakerConfig(
+            failure_threshold=1000
+        ),  # Very high threshold
+        bulkhead=BulkheadConfig(max_concurrency=50, acquisition_timeout=10.0),
     )
 
 
 class TestConnectionPoolingPerformance:
     """Test performance benefits of connection pooling."""
 
-    async def test_connection_pooling_vs_new_client_per_request(self, performance_config):
+    async def test_connection_pooling_vs_new_client_per_request(
+        self, performance_config
+    ):
         """
         Compare performance of reused client vs new client per request.
-        
+
         This test demonstrates the critical performance benefit of connection pooling.
         """
         num_requests = 20
@@ -66,7 +70,9 @@ class TestConnectionPoolingPerformance:
             start = time.perf_counter()
 
             # Create new client for each request (anti-pattern)
-            async with httpx.AsyncClient(base_url=performance_config.base_url) as client:
+            async with httpx.AsyncClient(
+                base_url=performance_config.base_url
+            ) as client:
                 response = await client.get("/msg")
 
             end = time.perf_counter()
@@ -86,7 +92,9 @@ class TestConnectionPoolingPerformance:
         print(f"  Performance improvement: {performance_improvement:.1f}%")
 
         # Should see at least 20% improvement with connection pooling
-        assert performance_improvement > 20, f"Expected >20% improvement, got {performance_improvement:.1f}%"
+        assert (
+            performance_improvement > 20
+        ), f"Expected >20% improvement, got {performance_improvement:.1f}%"
 
     async def test_concurrent_request_performance(self, performance_config):
         """Test performance under concurrent load."""
@@ -125,7 +133,9 @@ class TestConnectionPoolingPerformance:
         # (though this depends on server capacity and may plateau)
         # Allow some variance due to system load and overhead
         throughput_ratio = results[5] / results[1]
-        assert throughput_ratio > 0.8, f"Significant throughput decrease with concurrency: {throughput_ratio:.2f}"
+        assert (
+            throughput_ratio > 0.8
+        ), f"Significant throughput decrease with concurrency: {throughput_ratio:.2f}"
 
 
 class TestResiliencePatternOverhead:
@@ -140,7 +150,7 @@ class TestResiliencePatternOverhead:
             base_url=server_base_url,
             retry=RetryConfig(max_attempts=3),
             circuit_breaker=CircuitBreakerConfig(failure_threshold=5),
-            bulkhead=BulkheadConfig(max_concurrency=10)
+            bulkhead=BulkheadConfig(max_concurrency=10),
         )
 
         resilient_times = []
@@ -175,7 +185,9 @@ class TestResiliencePatternOverhead:
         print(f"  Overhead:             {overhead_percent:.1f}%")
 
         # Overhead should be reasonable (typically < 25% for successful requests in test environment)
-        assert overhead_percent < 25, f"Resilience overhead too high: {overhead_percent:.1f}%"
+        assert (
+            overhead_percent < 25
+        ), f"Resilience overhead too high: {overhead_percent:.1f}%"
 
     async def test_retry_performance_under_failures(self, server_base_url):
         """Test performance when retries are actually triggered."""
@@ -185,8 +197,8 @@ class TestResiliencePatternOverhead:
                 max_attempts=3,
                 min_wait_seconds=0.05,  # Short waits for testing
                 max_wait_seconds=0.2,
-                jitter=False  # Consistent timing
-            )
+                jitter=False,  # Consistent timing
+            ),
         )
 
         # Reset server state first
@@ -199,7 +211,9 @@ class TestResiliencePatternOverhead:
             # Test individual requests to trigger retries
             # Configure server to fail a moderate number of requests
             async with httpx.AsyncClient() as setup_client:
-                await setup_client.post(f"{server_base_url}/fail/count/5")  # Lower count
+                await setup_client.post(
+                    f"{server_base_url}/fail/count/5"
+                )  # Lower count
 
             # Make sequential requests to ensure some succeed and some retry
             responses = []
@@ -214,7 +228,9 @@ class TestResiliencePatternOverhead:
             end = time.perf_counter()
 
             # At least some should succeed (retry mechanism working)
-            assert len(responses) > 0, "No requests succeeded - retry mechanism may not be working"
+            assert (
+                len(responses) > 0
+            ), "No requests succeeded - retry mechanism may not be working"
 
             # Calculate performance with retries
             total_time = end - start
@@ -222,7 +238,9 @@ class TestResiliencePatternOverhead:
 
             print("\nRetry Performance Analysis:")
             print(f"  Total time for {len(responses)} requests: {total_time:.2f}s")
-            print(f"  Average time per request (with retries): {avg_time_per_request:.3f}s")
+            print(
+                f"  Average time per request (with retries): {avg_time_per_request:.3f}s"
+            )
 
             # Should complete in reasonable time despite retries
             assert avg_time_per_request < 1.0, "Requests with retries taking too long"
@@ -283,6 +301,7 @@ class TestMemoryAndResourceUsage:
 @pytest.fixture(autouse=True)
 def skip_if_no_server(server_base_url):
     """Auto-skip performance tests if server is not available."""
+
     async def check_server():
         try:
             async with httpx.AsyncClient() as client:

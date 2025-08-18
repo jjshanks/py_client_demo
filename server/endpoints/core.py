@@ -26,14 +26,16 @@ def get_idempotency_cache(request: Request) -> IdempotencyCache:
 
 @router.get("/msg")
 async def get_message(
-    delay: int = Query(0, description="Delay in milliseconds before response", ge=0, le=30000),
+    delay: int = Query(
+        0, description="Delay in milliseconds before response", ge=0, le=30000
+    ),
     x_request_id: Optional[str] = Header(None, alias="X-Request-ID"),
     state: ServerState = Depends(get_server_state),
-    cache: IdempotencyCache = Depends(get_idempotency_cache)
+    cache: IdempotencyCache = Depends(get_idempotency_cache),
 ):
     """
     Core endpoint that returns a message with a unique UUID.
-    
+
     Processing Logic (as per specification):
     1. Acquire concurrency semaphore (handled by middleware)
     2. Check failure state - fail before idempotency check
@@ -49,14 +51,9 @@ async def get_message(
     should_fail = await state.failure_manager.should_fail()
     if should_fail:
         logger.debug(
-            "Inducing failure as configured",
-            request_id=x_request_id,
-            delay=delay
+            "Inducing failure as configured", request_id=x_request_id, delay=delay
         )
-        raise HTTPException(
-            status_code=500,
-            detail="Induced server failure"
-        )
+        raise HTTPException(status_code=500, detail="Induced server failure")
 
     # Step 4: Check idempotency cache if X-Request-ID is provided
     if x_request_id:
@@ -65,21 +62,16 @@ async def get_message(
             logger.debug(
                 "Returning cached response",
                 request_id=x_request_id,
-                message_id=cached_response
+                message_id=cached_response,
             )
             return {"message_id": cached_response}
 
-        logger.debug(
-            "Cache miss for request ID",
-            request_id=x_request_id
-        )
+        logger.debug("Cache miss for request ID", request_id=x_request_id)
 
     # Step 6: Apply delay if requested
     if delay > 0:
         logger.debug(
-            "Applying requested delay",
-            delay_ms=delay,
-            request_id=x_request_id
+            "Applying requested delay", delay_ms=delay, request_id=x_request_id
         )
         await asyncio.sleep(delay / 1000.0)  # Convert ms to seconds
 
@@ -90,9 +82,7 @@ async def get_message(
     if x_request_id:
         await cache.store_response(x_request_id, message_id)
         logger.debug(
-            "Stored response in cache",
-            request_id=x_request_id,
-            message_id=message_id
+            "Stored response in cache", request_id=x_request_id, message_id=message_id
         )
 
     logger.debug(
@@ -100,7 +90,7 @@ async def get_message(
         message_id=message_id,
         request_id=x_request_id,
         delay=delay,
-        cached=x_request_id is not None
+        cached=x_request_id is not None,
     )
 
     # Step 9: Return response

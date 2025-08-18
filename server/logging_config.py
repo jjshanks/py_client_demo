@@ -8,7 +8,9 @@ import structlog
 from structlog.types import EventDict
 
 
-def add_correlation_id(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
+def add_correlation_id(
+    logger: Any, method_name: str, event_dict: EventDict
+) -> EventDict:
     """Add correlation ID from context if available."""
     # This processor can be extended to pull correlation IDs from async context
     return event_dict
@@ -17,6 +19,7 @@ def add_correlation_id(logger: Any, method_name: str, event_dict: EventDict) -> 
 def add_timestamp(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
     """Add ISO timestamp to log entries."""
     import datetime
+
     event_dict["timestamp"] = datetime.datetime.utcnow().isoformat() + "Z"
     return event_dict
 
@@ -24,7 +27,7 @@ def add_timestamp(logger: Any, method_name: str, event_dict: EventDict) -> Event
 def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
     """
     Configure structured logging for the application.
-    
+
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
         log_format: Format type ('json' for production, 'console' for development)
@@ -53,14 +56,12 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
 
     if log_format == "json":
         # JSON logging for production
-        processors = shared_processors + [
-            structlog.processors.JSONRenderer()
-        ]
+        processors = shared_processors + [structlog.processors.JSONRenderer()]
     else:
         # Console logging for development
         processors = shared_processors + [
             structlog.processors.TimeStamper(fmt="ISO"),
-            structlog.dev.ConsoleRenderer(colors=True)
+            structlog.dev.ConsoleRenderer(colors=True),
         ]
 
     structlog.configure(

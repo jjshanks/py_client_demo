@@ -13,7 +13,7 @@ from client import ResilientClient, ClientConfig
 async def main():
     # Create client configuration
     config = ClientConfig(base_url="http://localhost:8000")
-    
+
     # Use client with automatic resource management
     async with ResilientClient(config) as client:
         response = await client.get("/msg")
@@ -31,7 +31,7 @@ from client import create_resilient_client
 
 async def main():
     config = ClientConfig(base_url="http://localhost:8000")
-    
+
     async with create_resilient_client(config) as client:
         response = await client.get("/msg")
         print(response.json())
@@ -46,15 +46,15 @@ from client import ClientConfig, TimeoutConfig, RetryConfig, CircuitBreakerConfi
 
 config = ClientConfig(
     base_url="https://api.example.com",
-    
+
     # HTTP timeouts
     timeout=TimeoutConfig(
         connect=60.0,    # Connection timeout
-        read=15.0,       # Read timeout  
+        read=15.0,       # Read timeout
         write=15.0,      # Write timeout
         pool=5.0         # Pool timeout
     ),
-    
+
     # Retry behavior
     retry=RetryConfig(
         max_attempts=5,           # Maximum retry attempts
@@ -63,26 +63,26 @@ config = ClientConfig(
         multiplier=2.0,           # Exponential backoff multiplier
         jitter=True               # Add random jitter to wait times
     ),
-    
+
     # Circuit breaker
     circuit_breaker=CircuitBreakerConfig(
         failure_threshold=5,      # Failures before opening circuit
         recovery_timeout=30.0,    # Seconds before attempting recovery
     ),
-    
+
     # Concurrency limiting (bulkhead)
     bulkhead=BulkheadConfig(
         max_concurrency=50,       # Maximum concurrent requests
         acquisition_timeout=30.0  # Timeout for acquiring connection slot
     ),
-    
+
     # Logging
     logging=LoggingConfig(
         level="INFO",             # Log level
         include_request_id=True,  # Include request IDs in logs
         logger_name="my_client"   # Custom logger name
     ),
-    
+
     # httpx client options
     follow_redirects=True,
     verify_ssl=True,
@@ -114,20 +114,20 @@ The client supports all standard HTTP methods with automatic resilience patterns
 async with create_resilient_client(config) as client:
     # GET request
     response = await client.get("/users")
-    
+
     # POST request with JSON data
     response = await client.post("/users", json={"name": "John Doe"})
-    
+
     # PUT request with custom headers
     response = await client.put(
-        "/users/123", 
+        "/users/123",
         json={"name": "Jane Doe"},
         headers={"Authorization": "Bearer token"}
     )
-    
+
     # DELETE request
     response = await client.delete("/users/123")
-    
+
     # All httpx parameters are supported
     response = await client.get(
         "/search",
@@ -145,7 +145,7 @@ async with create_resilient_client(config) as client:
 async with create_resilient_client(config) as client:
     # Client automatically generates X-Request-ID for idempotency
     response = await client.post("/create-user", json={"name": "John"})
-    
+
     # If the request is retried, the same X-Request-ID is used
     # The server can safely deduplicate based on this ID
 ```
@@ -158,13 +158,13 @@ import uuid
 async with create_resilient_client(config) as client:
     # Provide your own request ID for idempotency
     custom_id = str(uuid.uuid4())
-    response = await client.post("/create-order", 
-                                json={"item": "widget"}, 
+    response = await client.post("/create-order",
+                                json={"item": "widget"},
                                 request_id=custom_id)
-    
+
     # Multiple calls with same request_id will be deduplicated by server
-    response2 = await client.post("/create-order", 
-                                 json={"item": "widget"}, 
+    response2 = await client.post("/create-order",
+                                 json={"item": "widget"},
                                  request_id=custom_id)
 ```
 
@@ -204,7 +204,7 @@ async with create_resilient_client(config) as client:
 ```python
 from client.exceptions import (
     APITimeoutError,           # Client-side timeouts
-    ServerTimeoutError,        # Server 408 responses  
+    ServerTimeoutError,        # Server 408 responses
     ServiceUnavailableError,   # Server 502/503/504 responses
     ServerError,               # Other 5xx responses
     AuthenticationError,       # 401/403 responses
@@ -234,11 +234,11 @@ import httpx
 
 async def test_retry_behavior():
     config = ClientConfig(base_url="http://localhost:8000")
-    
+
     # Configure test server to fail 2 requests
     async with httpx.AsyncClient() as setup_client:
         await setup_client.post("http://localhost:8000/fail/count/2")
-    
+
     # Client will automatically retry and succeed
     async with create_resilient_client(config) as client:
         response = await client.get("/msg")
@@ -257,11 +257,11 @@ async def test_circuit_breaker():
             recovery_timeout=5.0
         )
     )
-    
+
     # Configure sustained failures to trip circuit breaker
     async with httpx.AsyncClient() as setup_client:
         await setup_client.post("http://localhost:8000/fail/count/10")
-    
+
     async with create_resilient_client(config) as client:
         # Generate failures to trip circuit breaker
         for _ in range(3):
@@ -269,7 +269,7 @@ async def test_circuit_breaker():
                 await client.get("/msg")
             except ServerError:
                 pass
-        
+
         # Circuit should now be open - next call fails fast
         try:
             await client.get("/msg")
@@ -289,24 +289,24 @@ async def test_bulkhead():
             acquisition_timeout=1.0
         )
     )
-    
+
     async with create_resilient_client(config) as client:
         # Start many concurrent slow requests
         tasks = [
             client.get("/msg", params={"delay": 1000})  # 1 second delay
             for _ in range(10)
         ]
-        
+
         try:
             # Some should succeed, others should hit bulkhead timeout
             results = await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             successes = [r for r in results if isinstance(r, httpx.Response)]
             pool_timeouts = [r for r in results if isinstance(r, PoolTimeoutError)]
-            
+
             print(f"Successful requests: {len(successes)}")
             print(f"Bulkhead timeouts: {len(pool_timeouts)}")
-            
+
         finally:
             # Cancel any remaining tasks
             for task in tasks:
@@ -380,13 +380,13 @@ resilient_client = None
 async def lifespan(app: FastAPI):
     """FastAPI lifespan to manage client lifecycle."""
     global resilient_client
-    
+
     config = ClientConfig(base_url="http://api.example.com")
     resilient_client = ResilientClient(config)
     await resilient_client._ensure_initialized()
-    
+
     yield
-    
+
     await resilient_client.close()
 
 app = FastAPI(lifespan=lifespan)
@@ -432,7 +432,7 @@ for _ in range(100):
 # High-throughput configuration
 high_perf_config = ClientConfig(
     base_url="http://api.example.com",
-    
+
     # Aggressive timeouts
     timeout=TimeoutConfig(
         connect=30.0,
@@ -440,21 +440,21 @@ high_perf_config = ClientConfig(
         write=10.0,
         pool=2.0
     ),
-    
+
     # Minimal retries for high throughput
     retry=RetryConfig(
         max_attempts=2,
         min_wait_seconds=0.1,
         max_wait_seconds=1.0
     ),
-    
+
     # Higher concurrency
     bulkhead=BulkheadConfig(
         max_concurrency=100,
         acquisition_timeout=5.0
     ),
-    
-    # Less verbose logging  
+
+    # Less verbose logging
     logging=LoggingConfig(level="WARNING")
 )
 ```
@@ -482,27 +482,27 @@ async def test_resilience_patterns():
     # Setup: Reset server state
     async with httpx.AsyncClient() as setup_client:
         await setup_client.post("http://localhost:8000/fail/reset")
-    
+
     config = ClientConfig(base_url="http://localhost:8000")
-    
+
     async with create_resilient_client(config) as client:
         # Test 1: Successful operation
         response = await client.get("/msg")
         assert response.status_code == 200
-        
+
         # Test 2: Configure server failures and test retries
         async with httpx.AsyncClient() as setup_client:
             await setup_client.post("http://localhost:8000/fail/count/2")
-        
+
         # Should succeed despite initial failures
         response = await client.get("/msg")
         assert response.status_code == 200
-        
+
         # Test 3: Test idempotency
         request_id = "test-idempotent-123"
         resp1 = await client.get("/msg", request_id=request_id)
         resp2 = await client.get("/msg", request_id=request_id)
-        
+
         # Should return same message_id
         assert resp1.json()["message_id"] == resp2.json()["message_id"]
 ```
@@ -515,36 +515,36 @@ async def test_resilience_patterns():
 # Production configuration
 production_config = ClientConfig(
     base_url=os.getenv("API_BASE_URL"),
-    
+
     timeout=TimeoutConfig(
         connect=60.0,     # Allow for slower initial connections
         read=30.0,        # Reasonable read timeout
         write=30.0,       # Reasonable write timeout
         pool=10.0         # Pool connection timeout
     ),
-    
+
     retry=RetryConfig(
         max_attempts=3,   # Conservative retry count
         min_wait_seconds=1.0,
         max_wait_seconds=30.0,
         jitter=True       # Essential for production
     ),
-    
+
     circuit_breaker=CircuitBreakerConfig(
         failure_threshold=5,
         recovery_timeout=60.0  # Longer recovery time
     ),
-    
+
     bulkhead=BulkheadConfig(
         max_concurrency=20,     # Based on your service capacity
         acquisition_timeout=10.0
     ),
-    
+
     logging=LoggingConfig(
         level="INFO",           # Avoid DEBUG in production
         include_request_id=True
     ),
-    
+
     verify_ssl=True,           # Always verify SSL in production
     user_agent=f"MyService/{VERSION}"
 )
@@ -581,7 +581,7 @@ structlog.configure(
 async with create_resilient_client(config) as client:
     await client.get("/data")
 
-# ✅ GOOD: Manual lifecycle management  
+# ✅ GOOD: Manual lifecycle management
 client = ResilientClient(config)
 try:
     await client._ensure_initialized()
@@ -647,7 +647,7 @@ async def test_my_service(mock_request):
     mock_response.status_code = 200
     mock_response.json.return_value = {"data": "test"}
     mock_request.return_value = mock_response
-    
+
     config = ClientConfig(base_url="http://test")
     async with create_resilient_client(config) as client:
         response = await client.get("/data")
@@ -667,13 +667,13 @@ async def test_against_real_server():
 
 1. **PoolTimeoutError**: Client is saturated
    - Solution: Increase `bulkhead.max_concurrency` or reduce concurrent load
-   
+
 2. **Circuit breaker constantly open**: Downstream service is unhealthy
    - Solution: Check service health, increase `failure_threshold`, or increase `recovery_timeout`
-   
+
 3. **Requests timing out**: Network or server latency issues
    - Solution: Increase timeout values in `TimeoutConfig`
-   
+
 4. **Too many retries**: Aggressive retry configuration
    - Solution: Reduce `max_attempts` or increase wait times
 

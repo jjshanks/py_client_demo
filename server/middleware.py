@@ -30,7 +30,7 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
             "Waiting for concurrency slot",
             path=request.url.path,
             method=request.method,
-            available_slots=self.semaphore._value
+            available_slots=self.semaphore._value,
         )
 
         async with self.semaphore:
@@ -38,7 +38,7 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
                 "Acquired concurrency slot",
                 path=request.url.path,
                 method=request.method,
-                remaining_slots=self.semaphore._value
+                remaining_slots=self.semaphore._value,
             )
 
             try:
@@ -48,7 +48,7 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
                 logger.debug(
                     "Released concurrency slot",
                     path=request.url.path,
-                    method=request.method
+                    method=request.method,
                 )
 
 
@@ -67,8 +67,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         try:
             # Wrap the request processing in a timeout
             response = await asyncio.wait_for(
-                call_next(request),
-                timeout=self.timeout_seconds
+                call_next(request), timeout=self.timeout_seconds
             )
             return response
         except asyncio.TimeoutError:
@@ -76,12 +75,9 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
                 "Request timeout",
                 path=request.url.path,
                 method=request.method,
-                timeout_seconds=self.timeout_seconds
+                timeout_seconds=self.timeout_seconds,
             )
-            return JSONResponse(
-                status_code=408,
-                content={"detail": "Request timeout"}
-            )
+            return JSONResponse(status_code=408, content={"detail": "Request timeout"})
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -105,7 +101,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             query_params=str(request.query_params),
             request_id=request_id,
             user_agent=user_agent,
-            client_host=request.client.host if request.client else None
+            client_host=request.client.host if request.client else None,
         )
 
         # Process request
@@ -121,7 +117,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 status_code=response.status_code,
                 duration_ms=round(duration_ms, 2),
-                request_id=request_id
+                request_id=request_id,
             )
 
             # Add correlation ID to response headers for tracing
@@ -139,7 +135,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 duration_ms=round(duration_ms, 2),
                 error_type=type(exc).__name__,
                 error_message=str(exc),
-                request_id=request_id
+                request_id=request_id,
             )
             raise
 
@@ -155,10 +151,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             raise
         except asyncio.TimeoutError:
             # This should be handled by TimeoutMiddleware, but just in case
-            return JSONResponse(
-                status_code=408,
-                content={"detail": "Request timeout"}
-            )
+            return JSONResponse(status_code=408, content={"detail": "Request timeout"})
         except Exception as exc:
             # Catch any unexpected errors and return a generic 500
             logger.error(
@@ -166,9 +159,8 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
                 method=request.method,
                 error_type=type(exc).__name__,
-                error_message=str(exc)
+                error_message=str(exc),
             )
             return JSONResponse(
-                status_code=500,
-                content={"detail": "Internal server error"}
+                status_code=500, content={"detail": "Internal server error"}
             )

@@ -32,12 +32,7 @@ class TestTimeoutConfig:
 
     def test_custom_timeouts(self):
         """Test custom timeout values."""
-        config = TimeoutConfig(
-            connect=30.0,
-            read=10.0,
-            write=10.0,
-            pool=2.0
-        )
+        config = TimeoutConfig(connect=30.0, read=10.0, write=10.0, pool=2.0)
         assert config.connect == 30.0
         assert config.read == 10.0
         assert config.write == 10.0
@@ -74,7 +69,7 @@ class TestRetryConfig:
             min_wait_seconds=0.5,
             max_wait_seconds=30.0,
             multiplier=1.5,
-            jitter=False
+            jitter=False,
         )
         assert config.max_attempts == 5
         assert config.min_wait_seconds == 0.5
@@ -96,9 +91,7 @@ class TestCircuitBreakerConfig:
     def test_custom_circuit_breaker_config(self):
         """Test custom circuit breaker values."""
         config = CircuitBreakerConfig(
-            failure_threshold=3,
-            recovery_timeout=60.0,
-            expected_exception="ServerError"
+            failure_threshold=3, recovery_timeout=60.0, expected_exception="ServerError"
         )
         assert config.failure_threshold == 3
         assert config.recovery_timeout == 60.0
@@ -116,10 +109,7 @@ class TestBulkheadConfig:
 
     def test_custom_bulkhead_config(self):
         """Test custom bulkhead values."""
-        config = BulkheadConfig(
-            max_concurrency=100,
-            acquisition_timeout=60.0
-        )
+        config = BulkheadConfig(max_concurrency=100, acquisition_timeout=60.0)
         assert config.max_concurrency == 100
         assert config.acquisition_timeout == 60.0
 
@@ -137,9 +127,7 @@ class TestLoggingConfig:
     def test_custom_logging_config(self):
         """Test custom logging values."""
         config = LoggingConfig(
-            level="DEBUG",
-            include_request_id=False,
-            logger_name="custom_client"
+            level="DEBUG", include_request_id=False, logger_name="custom_client"
         )
         assert config.level == "DEBUG"
         assert config.include_request_id is False
@@ -177,7 +165,7 @@ class TestClientConfig:
             logging=LoggingConfig(level="DEBUG"),
             follow_redirects=False,
             verify_ssl=False,
-            user_agent="MyClient/1.0"
+            user_agent="MyClient/1.0",
         )
 
         assert config.base_url == "https://api.example.com"

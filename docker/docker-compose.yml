@@ -67,7 +67,7 @@ services:
       - TARGET_URL=http://test-server:8000
     volumes:
       - ../tests:/tests:ro
-    command: 
+    command:
       - sh
       - -c
       - |
@@ -79,25 +79,25 @@ services:
         import asyncio
         import httpx
         import time
-        
+
         async def load_test():
             async with httpx.AsyncClient() as client:
                 print('Starting load test...')
                 start = time.time()
-                
+
                 tasks = []
                 for i in range(100):
                     task = client.get('http://test-server:8000/msg?delay=50')
                     tasks.append(task)
-                
+
                 responses = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
                 end = time.time()
                 success_count = sum(1 for r in responses if hasattr(r, 'status_code') and r.status_code == 200)
-                
+
                 print(f'Completed {len(responses)} requests in {end-start:.2f}s')
                 print(f'Success rate: {success_count}/{len(responses)} ({success_count/len(responses)*100:.1f}%)')
-        
+
         asyncio.run(load_test())
         "
     profiles:

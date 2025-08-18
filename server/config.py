@@ -18,13 +18,13 @@ class ServerConfig(BaseSettings):
         default=50,
         description="Maximum number of simultaneous requests the server will process",
         ge=1,
-        le=1000
+        le=1000,
     )
     request_timeout: int = Field(
         default=30,
         description="Maximum time in seconds for processing a single request",
         ge=1,
-        le=300
+        le=300,
     )
 
     # Cache settings
@@ -32,54 +32,49 @@ class ServerConfig(BaseSettings):
         default=1000,
         description="Maximum number of entries in the idempotency cache",
         ge=1,
-        le=100000
+        le=100000,
     )
     cache_ttl_seconds: int = Field(
         default=300,
         description="Time-To-Live for cache entries in seconds",
         ge=1,
-        le=86400  # 24 hours max
+        le=86400,  # 24 hours max
     )
 
     # Logging settings
     log_level: str = Field(
         default="INFO",
         description="Logging level (DEBUG, INFO, WARNING, ERROR)",
-        pattern="^(DEBUG|INFO|WARNING|ERROR)$"
+        pattern="^(DEBUG|INFO|WARNING|ERROR)$",
     )
     log_format: str = Field(
         default="json",
         description="Log format (json or console)",
-        pattern="^(json|console)$"
+        pattern="^(json|console)$",
     )
 
     # Optional settings for advanced use cases
     enable_docs: bool = Field(
-        default=True,
-        description="Enable FastAPI automatic documentation"
+        default=True, description="Enable FastAPI automatic documentation"
     )
-    cors_enabled: bool = Field(
-        default=False,
-        description="Enable CORS middleware"
-    )
+    cors_enabled: bool = Field(default=False, description="Enable CORS middleware")
     cors_origins: Optional[str] = Field(
-        default=None,
-        description="Comma-separated list of allowed CORS origins"
+        default=None, description="Comma-separated list of allowed CORS origins"
     )
 
-    @field_validator('cors_origins')
+    @field_validator("cors_origins")
     @classmethod
     def validate_cors_origins(cls, v):
         """Convert comma-separated string to list."""
         if v is None:
             return None
-        return [origin.strip() for origin in v.split(',') if origin.strip()]
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
 
     model_config = {
         "env_prefix": "SERVER_",
         "case_sensitive": False,
         "env_file": ".env",
-        "env_file_encoding": "utf-8"
+        "env_file_encoding": "utf-8",
     }
 
 

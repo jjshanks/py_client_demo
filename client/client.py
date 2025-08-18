@@ -228,7 +228,9 @@ class ResilientClient:
 
                     except Exception as e:
                         # Map all httpx exceptions to our custom hierarchy
-                        raise self._map_httpx_exception(e, getattr(e, "response", None)) from e
+                        raise self._map_httpx_exception(
+                            e, getattr(e, "response", None)
+                        ) from e
 
                 # Apply retry policy to the single request operation
                 retry_wrapped = self._retry_policy.wrap_operation(

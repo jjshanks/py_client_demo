@@ -393,7 +393,7 @@ The project includes a comprehensive Makefile for easy testing and development:
 # Run all tests (except performance) against Docker test server
 make docker-test
 
-# Run performance tests against Docker test server  
+# Run performance tests against Docker test server
 make docker-test-performance
 
 # Run ALL tests including performance against Docker test server
@@ -449,7 +449,7 @@ make ci
 # Server unit tests
 uv run pytest tests/test_endpoints.py tests/test_cache.py tests/test_state.py -v
 
-# Client library unit tests  
+# Client library unit tests
 uv run pytest tests/test_resilient_client.py tests/test_circuit_breaker.py tests/test_retry_policies.py -v
 
 # Run client demo

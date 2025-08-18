@@ -12,7 +12,12 @@ from typing import Any, Optional
 class MyAPIError(Exception):
     """Base exception for all library errors."""
 
-    def __init__(self, message: str = "", response: Optional[Any] = None, request: Optional[Any] = None):
+    def __init__(
+        self,
+        message: str = "",
+        response: Optional[Any] = None,
+        request: Optional[Any] = None,
+    ):
         self.message = message
         self.response = response
         self.request = request

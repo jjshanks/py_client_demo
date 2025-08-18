@@ -13,6 +13,7 @@ logger = structlog.get_logger()
 @dataclass
 class FailureConfig:
     """Configuration for failure injection modes."""
+
     fail_requests_count: int = 0
     fail_until_timestamp: Optional[float] = None
 
@@ -27,7 +28,7 @@ class FailureStateManager:
     async def should_fail(self) -> bool:
         """
         Check if the current request should fail based on failure configuration.
-        
+
         Returns True if either:
         - fail_requests_count > 0, OR
         - fail_until_timestamp is in the future
@@ -51,8 +52,10 @@ class FailureStateManager:
                     "Failure check result",
                     should_fail=True,
                     count_remaining=self._config.fail_requests_count,
-                    duration_remaining=max(0, (self._config.fail_until_timestamp or 0) - current_time),
-                    reason="count" if count_should_fail else "duration"
+                    duration_remaining=max(
+                        0, (self._config.fail_until_timestamp or 0) - current_time
+                    ),
+                    reason="count" if count_should_fail else "duration",
                 )
 
                 # Decrement count if it's active (as per spec)
@@ -60,7 +63,7 @@ class FailureStateManager:
                     self._config.fail_requests_count -= 1
                     logger.debug(
                         "Decremented failure count",
-                        new_count=self._config.fail_requests_count
+                        new_count=self._config.fail_requests_count,
                     )
 
             return should_fail
@@ -71,7 +74,7 @@ class FailureStateManager:
             self._config.fail_requests_count = max(0, count)
             logger.info(
                 "Failure mode activated (count)",
-                fail_requests_count=self._config.fail_requests_count
+                fail_requests_count=self._config.fail_requests_count,
             )
 
     async def set_fail_duration(self, duration_seconds: int) -> None:
@@ -82,7 +85,7 @@ class FailureStateManager:
             logger.info(
                 "Failure mode activated (duration)",
                 fail_until_timestamp=self._config.fail_until_timestamp,
-                duration_seconds=duration_seconds
+                duration_seconds=duration_seconds,
             )
 
     async def reset_failures(self) -> None:
@@ -98,13 +101,15 @@ class FailureStateManager:
             current_time = time.time()
             duration_remaining = 0
             if self._config.fail_until_timestamp:
-                duration_remaining = max(0, self._config.fail_until_timestamp - current_time)
+                duration_remaining = max(
+                    0, self._config.fail_until_timestamp - current_time
+                )
 
             return {
                 "fail_requests_count": self._config.fail_requests_count,
                 "fail_until_timestamp": self._config.fail_until_timestamp,
                 "duration_remaining_seconds": duration_remaining,
-                "currently_failing": await self._would_fail_without_decrement()
+                "currently_failing": await self._would_fail_without_decrement(),
             }
 
     async def _would_fail_without_decrement(self) -> bool:
@@ -130,8 +135,7 @@ class ServerState:
         """Initialize the concurrency limiting semaphore."""
         self.concurrency_semaphore = asyncio.Semaphore(max_concurrency)
         logger.info(
-            "Concurrency semaphore initialized",
-            max_concurrency=max_concurrency
+            "Concurrency semaphore initialized", max_concurrency=max_concurrency
         )
 
     def get_uptime_seconds(self) -> float:

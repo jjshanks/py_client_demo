@@ -11,14 +11,16 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
-os.environ.update({
-    "SERVER_MAX_CONCURRENCY": "10",
-    "SERVER_REQUEST_TIMEOUT": "5",
-    "SERVER_CACHE_MAX_SIZE": "100",
-    "SERVER_CACHE_TTL_SECONDS": "10",
-    "SERVER_LOG_LEVEL": "DEBUG",
-    "SERVER_LOG_FORMAT": "console"
-})
+os.environ.update(
+    {
+        "SERVER_MAX_CONCURRENCY": "10",
+        "SERVER_REQUEST_TIMEOUT": "5",
+        "SERVER_CACHE_MAX_SIZE": "100",
+        "SERVER_CACHE_TTL_SECONDS": "10",
+        "SERVER_LOG_LEVEL": "DEBUG",
+        "SERVER_LOG_FORMAT": "console",
+    }
+)
 
 from server.main import app
 

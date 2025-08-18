@@ -14,6 +14,7 @@ logger = structlog.get_logger()
 @dataclass
 class CacheEntry:
     """Cache entry with value and timestamp."""
+
     value: Any
     created_at: float
 
@@ -25,7 +26,7 @@ class CacheEntry:
 class TTLCache:
     """
     Thread-safe cache with both size-based and TTL-based eviction.
-    
+
     Features:
     - LRU eviction when max size is reached
     - TTL-based expiration with automatic cleanup
@@ -46,7 +47,7 @@ class TTLCache:
     async def get(self, key: str) -> Optional[Any]:
         """
         Get a value from the cache.
-        
+
         Returns None if key doesn't exist or has expired.
         Automatically cleans up expired entries periodically.
         """
@@ -61,8 +62,12 @@ class TTLCache:
             if entry.is_expired(self.ttl_seconds):
                 # Entry has expired, remove it
                 del self._data[key]
-                logger.debug("Cache miss", key=key, reason="expired",
-                           entry_age=time.time() - entry.created_at)
+                logger.debug(
+                    "Cache miss",
+                    key=key,
+                    reason="expired",
+                    entry_age=time.time() - entry.created_at,
+                )
                 return None
 
             # Move to end (most recently used)
@@ -73,7 +78,7 @@ class TTLCache:
     async def set(self, key: str, value: Any) -> None:
         """
         Set a value in the cache.
-        
+
         Automatically evicts LRU entries if max size is exceeded.
         """
         async with self._lock:
@@ -89,13 +94,15 @@ class TTLCache:
             # Enforce size limit by removing LRU entries
             evicted_count = 0
             while len(self._data) > self.max_size:
-                evicted_key, evicted_entry = self._data.popitem(last=False)  # Remove oldest
+                evicted_key, evicted_entry = self._data.popitem(
+                    last=False
+                )  # Remove oldest
                 evicted_count += 1
                 logger.debug(
                     "Cache eviction (size limit)",
                     evicted_key=evicted_key,
                     entry_age=current_time - evicted_entry.created_at,
-                    cache_size=len(self._data)
+                    cache_size=len(self._data),
                 )
 
             if evicted_count > 0:
@@ -103,7 +110,7 @@ class TTLCache:
                     "Cache size eviction completed",
                     evicted_count=evicted_count,
                     current_size=len(self._data),
-                    max_size=self.max_size
+                    max_size=self.max_size,
                 )
 
             logger.debug("Cache set", key=key, cache_size=len(self._data))
@@ -146,7 +153,7 @@ class TTLCache:
                 "expired_entries": expired_count,
                 "oldest_entry_age_seconds": oldest_entry_age,
                 "newest_entry_age_seconds": newest_entry_age,
-                "last_cleanup_seconds_ago": current_time - self._last_cleanup
+                "last_cleanup_seconds_ago": current_time - self._last_cleanup,
             }
 
     async def _maybe_cleanup_expired(self) -> None:
@@ -179,14 +186,14 @@ class TTLCache:
                 "Cache TTL cleanup completed",
                 expired_count=len(expired_keys),
                 remaining_count=len(self._data),
-                initial_size=initial_size
+                initial_size=initial_size,
             )
 
 
 class IdempotencyCache:
     """
     Idempotency cache for storing request responses.
-    
+
     Maps request IDs to response data with TTL and size limits.
     """
 

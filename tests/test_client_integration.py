@@ -38,25 +38,17 @@ def client_config(server_base_url):
     return ClientConfig(
         base_url=server_base_url,
         retry=RetryConfig(
-            max_attempts=3,
-            min_wait_seconds=0.1,
-            max_wait_seconds=2.0,
-            jitter=True
+            max_attempts=3, min_wait_seconds=0.1, max_wait_seconds=2.0, jitter=True
         ),
-        circuit_breaker=CircuitBreakerConfig(
-            failure_threshold=3,
-            recovery_timeout=2.0
-        ),
-        bulkhead=BulkheadConfig(
-            max_concurrency=10,
-            acquisition_timeout=5.0
-        )
+        circuit_breaker=CircuitBreakerConfig(failure_threshold=3, recovery_timeout=2.0),
+        bulkhead=BulkheadConfig(max_concurrency=10, acquisition_timeout=5.0),
     )
 
 
 @pytest.fixture(autouse=True)
 def skip_if_no_server(server_base_url):
     """Auto-skip integration tests if server is not available."""
+
     async def check_server():
         try:
             async with httpx.AsyncClient() as client:
@@ -126,7 +118,9 @@ class TestBasicClientFunctionality:
             # Should return the same message_id
             assert data1["message_id"] == data2["message_id"]
 
-    async def test_different_request_ids_get_different_responses(self, client_config, reset_server_state):
+    async def test_different_request_ids_get_different_responses(
+        self, client_config, reset_server_state
+    ):
         """Test that different request IDs get different UUIDs."""
         async with create_resilient_client(client_config) as client:
             response1 = await client.get("/msg", request_id=str(uuid.uuid4()))
@@ -153,7 +147,9 @@ class TestRetryBehavior:
             response = await client.get("/msg")
             assert response.status_code == 200
 
-    async def test_retry_exhaustion_raises_exception(self, client_config, reset_server_state):
+    async def test_retry_exhaustion_raises_exception(
+        self, client_config, reset_server_state
+    ):
         """Test that exhausted retries raise the final exception."""
         # Configure server to fail more times than we retry
         fail_count = client_config.retry.max_attempts + 2
@@ -165,7 +161,9 @@ class TestRetryBehavior:
             with pytest.raises(ServerError):
                 await client.get("/msg")
 
-    async def test_idempotent_retries_use_same_request_id(self, client_config, reset_server_state):
+    async def test_idempotent_retries_use_same_request_id(
+        self, client_config, reset_server_state
+    ):
         """Test that retries use the same request ID for idempotency."""
         request_id = str(uuid.uuid4())
 
@@ -191,9 +189,8 @@ class TestCircuitBreakerBehavior:
             base_url=server_base_url,
             retry=RetryConfig(max_attempts=1),  # No retries for this test
             circuit_breaker=CircuitBreakerConfig(
-                failure_threshold=2,
-                recovery_timeout=1.0
-            )
+                failure_threshold=2, recovery_timeout=1.0
+            ),
         )
 
         # Configure server to fail many requests
@@ -224,9 +221,8 @@ class TestCircuitBreakerBehavior:
             base_url=server_base_url,
             retry=RetryConfig(max_attempts=1),
             circuit_breaker=CircuitBreakerConfig(
-                failure_threshold=2,
-                recovery_timeout=0.5  # Short recovery time
-            )
+                failure_threshold=2, recovery_timeout=0.5  # Short recovery time
+            ),
         )
 
         async with create_resilient_client(config) as client:
@@ -258,10 +254,7 @@ class TestBulkheadBehavior:
         """Test that concurrent requests within limit work correctly."""
         config = ClientConfig(
             base_url=server_base_url,
-            bulkhead=BulkheadConfig(
-                max_concurrency=3,
-                acquisition_timeout=2.0
-            )
+            bulkhead=BulkheadConfig(max_concurrency=3, acquisition_timeout=2.0),
         )
 
         async with create_resilient_client(config) as client:
@@ -280,16 +273,17 @@ class TestBulkheadBehavior:
         config = ClientConfig(
             base_url=server_base_url,
             bulkhead=BulkheadConfig(
-                max_concurrency=2,
-                acquisition_timeout=0.2  # Very short timeout
+                max_concurrency=2, acquisition_timeout=0.2  # Very short timeout
             ),
-            retry=RetryConfig(max_attempts=1)  # No retries
+            retry=RetryConfig(max_attempts=1),  # No retries
         )
 
         async with create_resilient_client(config) as client:
             # Start 2 long-running requests to saturate the bulkhead
             long_tasks = [
-                asyncio.create_task(client.get("/msg", params={"delay": 1000}))  # 1 second delay
+                asyncio.create_task(
+                    client.get("/msg", params={"delay": 1000})
+                )  # 1 second delay
                 for _ in range(2)
             ]
 
@@ -297,7 +291,9 @@ class TestBulkheadBehavior:
             await asyncio.sleep(0.05)
 
             # Third request should timeout on semaphore acquisition
-            with pytest.raises(PoolTimeoutError, match="Failed to acquire connection slot"):
+            with pytest.raises(
+                PoolTimeoutError, match="Failed to acquire connection slot"
+            ):
                 await client.get("/msg")
 
             # Clean up long running tasks
@@ -309,7 +305,9 @@ class TestBulkheadBehavior:
 class TestEndToEndScenarios:
     """Test complete end-to-end scenarios with all patterns working together."""
 
-    async def test_full_resilience_stack_recovery(self, client_config, reset_server_state):
+    async def test_full_resilience_stack_recovery(
+        self, client_config, reset_server_state
+    ):
         """Test that client recovers from failures using full resilience stack."""
         async with create_resilient_client(client_config) as client:
             # Configure server for some failures
@@ -324,7 +322,9 @@ class TestEndToEndScenarios:
             response2 = await client.get("/msg")
             assert response2.status_code == 200
 
-    async def test_multiple_operations_maintain_state(self, client_config, reset_server_state):
+    async def test_multiple_operations_maintain_state(
+        self, client_config, reset_server_state
+    ):
         """Test that client maintains internal state across multiple operations."""
         async with create_resilient_client(client_config) as client:
             # Make several successful requests
@@ -341,7 +341,9 @@ class TestEndToEndScenarios:
             assert client._circuit_breaker.state.value == "closed"
             assert client._circuit_breaker.failure_count == 0
 
-    async def test_mixed_success_and_failure_operations(self, client_config, reset_server_state):
+    async def test_mixed_success_and_failure_operations(
+        self, client_config, reset_server_state
+    ):
         """Test client behavior with mixed success/failure scenarios."""
         async with create_resilient_client(client_config) as client:
             # Configure server for limited failures
@@ -378,7 +380,7 @@ class TestEndToEndScenarios:
 class TestRealServerIntegration:
     """
     Tests that require a running server instance.
-    
+
     These tests will be skipped if the server is not available.
     Run the server with: uv run python -m server.main serve --reload
     """
@@ -392,7 +394,9 @@ class TestRealServerIntegration:
             except Exception as e:
                 pytest.skip(f"Test server not available: {e}")
 
-    async def test_failure_injection_integration(self, client_config, reset_server_state):
+    async def test_failure_injection_integration(
+        self, client_config, reset_server_state
+    ):
         """Test client resilience against server failure injection."""
         async with create_resilient_client(client_config) as client:
             # Test with count-based failures
@@ -405,23 +409,27 @@ class TestRealServerIntegration:
                 assert response.status_code == 200
 
                 # Verify server is back to normal
-                status_response = await setup_client.get(f"{client_config.base_url}/fail/status")
+                status_response = await setup_client.get(
+                    f"{client_config.base_url}/fail/status"
+                )
                 status_data = status_response.json()
                 assert not status_data["currently_failing"]
 
-    async def test_duration_based_failure_recovery(self, client_config, reset_server_state):
+    async def test_duration_based_failure_recovery(
+        self, client_config, reset_server_state
+    ):
         """Test client behavior with duration-based server failures."""
         config = ClientConfig(
             base_url=client_config.base_url,
             retry=RetryConfig(
                 max_attempts=5,  # More retries for duration test
                 min_wait_seconds=0.2,
-                max_wait_seconds=1.0
+                max_wait_seconds=1.0,
             ),
             circuit_breaker=CircuitBreakerConfig(
                 failure_threshold=10,  # High threshold for duration test
-                recovery_timeout=1.0
-            )
+                recovery_timeout=1.0,
+            ),
         )
 
         async with create_resilient_client(config) as client:
@@ -445,10 +453,7 @@ class TestConcurrencyAndLoad:
         async with create_resilient_client(client_config) as client:
             # Make many concurrent requests
             num_requests = 20
-            tasks = [
-                client.get("/msg")
-                for _ in range(num_requests)
-            ]
+            tasks = [client.get("/msg") for _ in range(num_requests)]
 
             responses = await asyncio.gather(*tasks)
 
@@ -465,10 +470,9 @@ class TestConcurrencyAndLoad:
         config = ClientConfig(
             base_url=server_base_url,
             bulkhead=BulkheadConfig(
-                max_concurrency=3,
-                acquisition_timeout=0.1  # Very short timeout
+                max_concurrency=3, acquisition_timeout=0.1  # Very short timeout
             ),
-            retry=RetryConfig(max_attempts=1)  # No retries
+            retry=RetryConfig(max_attempts=1),  # No retries
         )
 
         async with create_resilient_client(config) as client:

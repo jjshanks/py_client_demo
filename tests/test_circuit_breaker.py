@@ -29,7 +29,7 @@ class TestCircuitBreaker:
         return CircuitBreakerConfig(
             failure_threshold=3,
             recovery_timeout=1.0,  # Short timeout for testing
-            expected_exception="APIConnectionError"
+            expected_exception="APIConnectionError",
         )
 
     @pytest.fixture
@@ -45,6 +45,7 @@ class TestCircuitBreaker:
 
     async def test_successful_calls_keep_circuit_closed(self, circuit_breaker):
         """Test that successful calls maintain closed state."""
+
         async def successful_operation():
             return "success"
 
@@ -55,6 +56,7 @@ class TestCircuitBreaker:
 
     async def test_connection_errors_increment_failure_count(self, circuit_breaker):
         """Test that connection errors increment the failure count."""
+
         async def failing_operation():
             raise APIConnectionError("Connection failed")
 
@@ -68,6 +70,7 @@ class TestCircuitBreaker:
 
     async def test_circuit_opens_after_threshold_failures(self, circuit_breaker):
         """Test that circuit opens after reaching failure threshold."""
+
         async def failing_operation():
             raise ServerError("Server error")
 
@@ -101,7 +104,9 @@ class TestCircuitBreaker:
         # Force circuit to open state with old timestamp
         circuit_breaker.state = CircuitState.OPEN
         circuit_breaker.failure_count = circuit_breaker.config.failure_threshold
-        circuit_breaker.last_failure_time = time.time() - circuit_breaker.config.recovery_timeout - 1
+        circuit_breaker.last_failure_time = (
+            time.time() - circuit_breaker.config.recovery_timeout - 1
+        )
 
         async def test_operation():
             return "recovery test"
@@ -143,6 +148,7 @@ class TestCircuitBreaker:
 
     async def test_non_connection_errors_dont_affect_circuit(self, circuit_breaker):
         """Test that non-connection errors (like 4xx) don't affect circuit state."""
+
         async def client_error_operation():
             raise NotFoundError("Resource not found")
 
@@ -157,6 +163,7 @@ class TestCircuitBreaker:
 
     async def test_mixed_errors_only_count_connection_errors(self, circuit_breaker):
         """Test that only connection errors count toward failure threshold."""
+
         async def connection_error():
             raise APIConnectionError("Connection failed")
 
@@ -181,6 +188,7 @@ class TestCircuitBreaker:
         """Test that circuit breaker logs state changes."""
         # Use a mock logger directly on the circuit breaker instance
         from unittest.mock import Mock
+
         mock_logger = Mock()
         circuit_breaker.logger = mock_logger
 
@@ -209,10 +217,7 @@ class TestCircuitBreaker:
             return "success"
 
         # Run multiple concurrent operations
-        tasks = [
-            circuit_breaker.call(sometimes_failing_operation)
-            for _ in range(5)
-        ]
+        tasks = [circuit_breaker.call(sometimes_failing_operation) for _ in range(5)]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 

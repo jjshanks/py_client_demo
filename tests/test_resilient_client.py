@@ -39,7 +39,9 @@ class TestResilientClientLifecycle:
         return ClientConfig(
             base_url="http://localhost:8000",
             bulkhead=BulkheadConfig(max_concurrency=2, acquisition_timeout=1.0),
-            retry=RetryConfig(max_attempts=2, min_wait_seconds=0.01, max_wait_seconds=0.1)
+            retry=RetryConfig(
+                max_attempts=2, min_wait_seconds=0.01, max_wait_seconds=0.1
+            ),
         )
 
     async def test_client_initialization(self, client_config):
@@ -152,9 +154,7 @@ class TestExceptionMapping:
 
         for status_code, response in responses.items():
             status_error = httpx.HTTPStatusError(
-                "HTTP error",
-                request=Mock(),
-                response=response
+                "HTTP error", request=Mock(), response=response
             )
             mapped = client._map_httpx_exception(status_error)
 
@@ -166,9 +166,13 @@ class TestExceptionMapping:
             elif status_code in [400, 422]:
                 assert isinstance(mapped, InvalidRequestError)
             elif status_code == 408:
-                assert "ServerTimeoutError" in str(type(mapped))  # Will be implemented later
+                assert "ServerTimeoutError" in str(
+                    type(mapped)
+                )  # Will be implemented later
             elif status_code in [502, 503, 504]:
-                assert "ServiceUnavailableError" in str(type(mapped))  # Will be implemented later
+                assert "ServiceUnavailableError" in str(
+                    type(mapped)
+                )  # Will be implemented later
             elif 500 <= status_code < 600:
                 assert isinstance(mapped, ServerError)
 
@@ -180,12 +184,12 @@ class TestIdempotencyAndHeaders:
     def client_config(self):
         return ClientConfig(
             base_url="http://localhost:8000",
-            bulkhead=BulkheadConfig(max_concurrency=1, acquisition_timeout=0.1)
+            bulkhead=BulkheadConfig(max_concurrency=1, acquisition_timeout=0.1),
         )
 
     async def test_automatic_request_id_generation(self, client_config):
         """Test that request IDs are automatically generated."""
-        with patch('httpx.AsyncClient.request') as mock_request:
+        with patch("httpx.AsyncClient.request") as mock_request:
             mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_request.return_value = mock_response
@@ -206,7 +210,7 @@ class TestIdempotencyAndHeaders:
         """Test that custom request IDs are preserved."""
         custom_id = "custom-request-123"
 
-        with patch('httpx.AsyncClient.request') as mock_request:
+        with patch("httpx.AsyncClient.request") as mock_request:
             mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_request.return_value = mock_response
@@ -227,7 +231,7 @@ class TestIdempotencyAndHeaders:
             request_ids.append(headers.get("X-Request-ID"))
             raise httpx.TimeoutException("Timeout")
 
-        with patch('httpx.AsyncClient.request', side_effect=capture_request_id):
+        with patch("httpx.AsyncClient.request", side_effect=capture_request_id):
             async with ResilientClient(client_config) as client:
                 with pytest.raises(APITimeoutError):
                     await client.get("/test")
@@ -246,30 +250,29 @@ class TestBulkheadPattern:
         return ClientConfig(
             base_url="http://localhost:8000",
             bulkhead=BulkheadConfig(max_concurrency=2, acquisition_timeout=0.1),
-            retry=RetryConfig(max_attempts=1)  # No retries for these tests
+            retry=RetryConfig(max_attempts=1),  # No retries for these tests
         )
 
     async def test_concurrent_requests_within_limit(self, client_config):
         """Test that concurrent requests within limit work correctly."""
+
         async def slow_response(*args, **kwargs):
             await asyncio.sleep(0.1)
             response = Mock()
             response.raise_for_status = Mock()
             return response
 
-        with patch('httpx.AsyncClient.request', side_effect=slow_response):
+        with patch("httpx.AsyncClient.request", side_effect=slow_response):
             async with ResilientClient(client_config) as client:
                 # Start 2 concurrent requests (within limit)
-                tasks = [
-                    client.get("/test1"),
-                    client.get("/test2")
-                ]
+                tasks = [client.get("/test1"), client.get("/test2")]
 
                 results = await asyncio.gather(*tasks)
                 assert len(results) == 2
 
     async def test_semaphore_timeout_raises_pool_timeout_error(self, client_config):
         """Test that semaphore acquisition timeout raises PoolTimeoutError."""
+
         # Mock a very slow response to block semaphore slots
         async def blocking_response(*args, **kwargs):
             await asyncio.sleep(1.0)  # Block longer than acquisition timeout
@@ -277,7 +280,7 @@ class TestBulkheadPattern:
             response.raise_for_status = Mock()
             return response
 
-        with patch('httpx.AsyncClient.request', side_effect=blocking_response):
+        with patch("httpx.AsyncClient.request", side_effect=blocking_response):
             async with ResilientClient(client_config) as client:
                 # Start requests that fill up the semaphore
                 task1 = asyncio.create_task(client.get("/blocking1"))
@@ -287,13 +290,16 @@ class TestBulkheadPattern:
                 await asyncio.sleep(0.01)
 
                 # Third request should timeout on semaphore acquisition
-                with pytest.raises(PoolTimeoutError, match="Failed to acquire connection slot"):
+                with pytest.raises(
+                    PoolTimeoutError, match="Failed to acquire connection slot"
+                ):
                     await client.get("/should-timeout")
 
                 # Clean up
                 task1.cancel()
                 task2.cancel()
                 from contextlib import suppress
+
                 with suppress(asyncio.CancelledError):
                     await asyncio.gather(task1, task2, return_exceptions=True)
 
@@ -309,7 +315,7 @@ class TestHTTPMethods:
         """Test that all HTTP methods work correctly."""
         methods_to_test = ["GET", "POST", "PUT", "DELETE"]
 
-        with patch('httpx.AsyncClient.request') as mock_request:
+        with patch("httpx.AsyncClient.request") as mock_request:
             mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_request.return_value = mock_response
@@ -332,7 +338,7 @@ class TestHTTPMethods:
 
     async def test_request_parameters_passed_through(self, client_config):
         """Test that request parameters are properly passed to httpx."""
-        with patch('httpx.AsyncClient.request') as mock_request:
+        with patch("httpx.AsyncClient.request") as mock_request:
             mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_request.return_value = mock_response
@@ -342,7 +348,7 @@ class TestHTTPMethods:
                     "/test",
                     json={"key": "value"},
                     params={"param": "test"},
-                    headers={"Custom": "header"}
+                    headers={"Custom": "header"},
                 )
 
                 call_args = mock_request.call_args
@@ -362,9 +368,13 @@ class TestResilienceIntegration:
     def client_config(self):
         return ClientConfig(
             base_url="http://localhost:8000",
-            retry=RetryConfig(max_attempts=3, min_wait_seconds=0.01, max_wait_seconds=0.1),
-            circuit_breaker=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=0.1),  # Higher threshold
-            bulkhead=BulkheadConfig(max_concurrency=1, acquisition_timeout=0.1)
+            retry=RetryConfig(
+                max_attempts=3, min_wait_seconds=0.01, max_wait_seconds=0.1
+            ),
+            circuit_breaker=CircuitBreakerConfig(
+                failure_threshold=5, recovery_timeout=0.1
+            ),  # Higher threshold
+            bulkhead=BulkheadConfig(max_concurrency=1, acquisition_timeout=0.1),
         )
 
     async def test_retry_circuit_breaker_integration(self, client_config):
@@ -376,7 +386,7 @@ class TestResilienceIntegration:
             call_count += 1
             raise httpx.TimeoutException("Timeout")
 
-        with patch('httpx.AsyncClient.request', side_effect=failing_request):
+        with patch("httpx.AsyncClient.request", side_effect=failing_request):
             async with ResilientClient(client_config) as client:
                 # First request should exhaust retries
                 with pytest.raises(APITimeoutError):
@@ -402,21 +412,23 @@ class TestResilienceIntegration:
             response.raise_for_status = Mock()
             return response
 
-        with patch('httpx.AsyncClient.request', side_effect=failing_then_succeeding):
+        with patch("httpx.AsyncClient.request", side_effect=failing_then_succeeding):
             async with ResilientClient(client_config) as client:
                 result = await client.get("/test")
                 assert result is not None
 
                 # Semaphore should be available for next request
-                assert client._semaphore._value == client_config.bulkhead.max_concurrency
+                assert (
+                    client._semaphore._value == client_config.bulkhead.max_concurrency
+                )
 
-    @patch('client.client.logging.getLogger')
+    @patch("client.client.logging.getLogger")
     async def test_logging_integration(self, mock_get_logger, client_config):
         """Test that logging works throughout the resilience stack."""
         mock_logger = Mock()
         mock_get_logger.return_value = mock_logger
 
-        with patch('httpx.AsyncClient.request') as mock_request:
+        with patch("httpx.AsyncClient.request") as mock_request:
             mock_response = Mock()
             mock_response.raise_for_status = Mock()
             mock_request.return_value = mock_response
@@ -437,15 +449,16 @@ class TestErrorScenarios:
         return ClientConfig(
             base_url="http://localhost:8000",
             retry=RetryConfig(max_attempts=2, min_wait_seconds=0.01),
-            bulkhead=BulkheadConfig(acquisition_timeout=0.05)  # Very short for testing
+            bulkhead=BulkheadConfig(acquisition_timeout=0.05),  # Very short for testing
         )
 
     async def test_semaphore_release_on_exception(self, client_config):
         """Test that semaphore is released even when exceptions occur."""
+
         def failing_request(*args, **kwargs):
             raise httpx.NetworkError("Network failure")
 
-        with patch('httpx.AsyncClient.request', side_effect=failing_request):
+        with patch("httpx.AsyncClient.request", side_effect=failing_request):
             async with ResilientClient(client_config) as client:
                 initial_semaphore_value = client._semaphore._value
 
@@ -468,11 +481,10 @@ class TestErrorScenarios:
     async def test_custom_user_agent(self):
         """Test that custom user agent is properly set."""
         config = ClientConfig(
-            base_url="http://localhost:8000",
-            user_agent="TestClient/1.0"
+            base_url="http://localhost:8000", user_agent="TestClient/1.0"
         )
 
-        with patch('httpx.AsyncClient') as mock_client_class:
+        with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
 
