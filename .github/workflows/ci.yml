@@ -123,6 +123,7 @@ jobs:
           context: .
           file: docker/Dockerfile
           push: false
+          load: true
           tags: fastapi-test-server:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
