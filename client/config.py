@@ -77,7 +77,76 @@ class LoggingConfig(BaseModel):
 
 
 class ClientConfig(BaseModel):
-    """Complete configuration for the resilient HTTP client."""
+    """
+    Complete configuration for the resilient HTTP client.
+
+    This configuration class brings together all resilience pattern settings
+    in a single, validated structure. Understanding these settings is crucial
+    for tuning the client's behavior for different environments and requirements.
+
+    **Configuration Philosophy:**
+
+    Each resilience pattern can be tuned independently, but they work together:
+    - Timeouts should align with retry intervals (don't timeout mid-retry)
+    - Circuit breaker thresholds should account for retry attempts
+    - Bulkhead limits should match expected load patterns
+    - Logging helps monitor and tune other patterns
+
+    **Environment-Specific Tuning Examples:**
+
+    High-latency network (satellite, international):
+    ```python
+    config = ClientConfig(
+        base_url="https://api.remote.com",
+        timeout=TimeoutConfig(connect=30.0, read=60.0),
+        retry=RetryConfig(max_attempts=5, max_wait_seconds=300.0),
+        circuit_breaker=CircuitBreakerConfig(
+            failure_threshold=10,  # More tolerant of failures
+            recovery_timeout=60.0  # Longer recovery time
+        )
+    )
+    ```
+
+    High-throughput, low-latency (internal microservices):
+    ```python
+    config = ClientConfig(
+        base_url="http://internal.service",
+        timeout=TimeoutConfig(connect=2.0, read=5.0),
+        retry=RetryConfig(max_attempts=2, max_wait_seconds=10.0),
+        circuit_breaker=CircuitBreakerConfig(
+            failure_threshold=3,   # Quick to fail fast
+            recovery_timeout=10.0  # Quick recovery testing
+        ),
+        bulkhead=BulkheadConfig(max_concurrency=100)  # Higher throughput
+    )
+    ```
+
+    **Validation and Safety:**
+
+    - Pydantic validates all fields and provides helpful error messages
+    - extra="forbid" prevents typos in configuration field names
+    - Default values provide sensible starting points for most use cases
+    - Field descriptions serve as inline documentation
+
+    **Best Practices:**
+
+    1. Start with defaults and tune based on monitoring
+    2. Test configuration changes in staging first
+    3. Monitor circuit breaker state transitions
+    4. Adjust timeouts based on p99 latency metrics
+    5. Set bulkhead limits based on upstream service capacity
+
+    Attributes:
+        base_url: Base URL for all API requests (required)
+        timeout: HTTP timeout configuration for all request phases
+        retry: Exponential backoff retry behavior settings
+        circuit_breaker: Failure detection and fast-fail settings
+        bulkhead: Concurrency limiting and resource protection
+        logging: Observability and debugging configuration
+        follow_redirects: Whether to automatically follow HTTP redirects
+        verify_ssl: Whether to verify SSL certificates (disable only for testing)
+        user_agent: Custom User-Agent header for request identification
+    """
 
     base_url: str = Field(description="Base URL for the API")
     timeout: TimeoutConfig = Field(default_factory=TimeoutConfig)
