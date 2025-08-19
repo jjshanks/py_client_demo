@@ -9,8 +9,9 @@ bulkhead, and comprehensive error handling.
 import asyncio
 import logging
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 from tenacity import RetryError
@@ -59,16 +60,16 @@ class ResilientClient:
         self.logger = logging.getLogger(config.logging.logger_name)
         self.logger.setLevel(getattr(logging, config.logging.level.upper()))
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "ResilientClient":
         """Async context manager entry."""
         await self._ensure_initialized()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit."""
         await self.close()
 
-    async def _ensure_initialized(self):
+    async def _ensure_initialized(self) -> None:
         """Initialize the client if not already initialized."""
         if self._client is None:
             # Create httpx client with connection pooling
@@ -93,7 +94,7 @@ class ResilientClient:
                 f"ResilientClient initialized with base_url={self.config.base_url}"
             )
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the HTTP client and clean up resources."""
         if self._client and not self._closed:
             await self._client.aclose()
@@ -101,7 +102,7 @@ class ResilientClient:
             self.logger.info("ResilientClient closed")
 
     def _map_httpx_exception(
-        self, exc: Exception, response: httpx.Response = None
+        self, exc: Exception, response: Optional[httpx.Response] = None
     ) -> MyAPIError:
         """
         Map httpx exceptions to our custom exception hierarchy.
@@ -167,6 +168,8 @@ class ResilientClient:
         )
 
         try:
+            if self._semaphore is None:
+                raise RuntimeError("Client not initialized")
             await asyncio.wait_for(
                 self._semaphore.acquire(),
                 timeout=self.config.bulkhead.acquisition_timeout,
@@ -186,7 +189,7 @@ class ResilientClient:
             ) from e
 
     async def _make_request_with_resilience(
-        self, method: str, url: str, request_id: str, **kwargs
+        self, method: str, url: str, request_id: str, **kwargs: Any
     ) -> httpx.Response:
         """
         Make an HTTP request with full resilience pattern implementation.
@@ -215,11 +218,13 @@ class ResilientClient:
 
         try:
             # Define the HTTP operation with retry logic inside circuit breaker
-            async def http_operation_with_retries():
+            async def http_operation_with_retries() -> httpx.Response:
                 # Define the actual HTTP operation
-                async def single_http_request():
+                async def single_http_request() -> httpx.Response:
                     try:
                         # Make the HTTP request
+                        if self._client is None:
+                            raise RuntimeError("Client not initialized")
                         response = await self._client.request(method, url, **kwargs)
 
                         # Check for HTTP error status codes
@@ -229,11 +234,17 @@ class ResilientClient:
 
                     except Exception as e:
                         # Map all httpx exceptions to our custom hierarchy
+                        response_attr = getattr(e, "response", None)
                         raise self._map_httpx_exception(
-                            e, getattr(e, "response", None)
+                            e,
+                            response_attr
+                            if isinstance(response_attr, httpx.Response)
+                            else None,
                         ) from e
 
                 # Apply retry policy to the single request operation
+                if self._retry_policy is None:
+                    raise RuntimeError("Client not initialized")
                 retry_wrapped = self._retry_policy.wrap_operation(
                     single_http_request, request_id
                 )
@@ -243,17 +254,25 @@ class ResilientClient:
 
             # Apply circuit breaker protection to the entire retry loop
             # This ensures retry sequence counts as one operation for circuit breaker
+            if self._circuit_breaker is None:
+                raise RuntimeError("Client not initialized")
             return await self._circuit_breaker.call(http_operation_with_retries)
 
         except RetryError as e:
             # All retries exhausted - raise the last exception
-            raise e.last_attempt.exception() from e
+            last_exc = e.last_attempt.exception()
+            if last_exc is not None:
+                raise last_exc from e
+            raise MyAPIError("Retry failed with no exception") from e
 
         finally:
             # Always release semaphore slot
-            self._semaphore.release()
+            if self._semaphore is not None:
+                self._semaphore.release()
 
-    async def get(self, url: str, request_id: str = None, **kwargs) -> httpx.Response:
+    async def get(
+        self, url: str, request_id: Optional[str] = None, **kwargs: Any
+    ) -> httpx.Response:
         """
         Make a GET request with full resilience patterns.
 
@@ -276,7 +295,9 @@ class ResilientClient:
             "GET", url, request_id, **kwargs
         )
 
-    async def post(self, url: str, request_id: str = None, **kwargs) -> httpx.Response:
+    async def post(
+        self, url: str, request_id: Optional[str] = None, **kwargs: Any
+    ) -> httpx.Response:
         """
         Make a POST request with full resilience patterns.
 
@@ -299,7 +320,9 @@ class ResilientClient:
             "POST", url, request_id, **kwargs
         )
 
-    async def put(self, url: str, request_id: str = None, **kwargs) -> httpx.Response:
+    async def put(
+        self, url: str, request_id: Optional[str] = None, **kwargs: Any
+    ) -> httpx.Response:
         """
         Make a PUT request with full resilience patterns.
 
@@ -323,7 +346,7 @@ class ResilientClient:
         )
 
     async def delete(
-        self, url: str, request_id: str = None, **kwargs
+        self, url: str, request_id: Optional[str] = None, **kwargs: Any
     ) -> httpx.Response:
         """
         Make a DELETE request with full resilience patterns.
@@ -349,7 +372,9 @@ class ResilientClient:
 
 
 @asynccontextmanager
-async def create_resilient_client(config: ClientConfig):
+async def create_resilient_client(
+    config: ClientConfig,
+) -> AsyncGenerator[ResilientClient, None]:
     """
     Async context manager for creating and managing a resilient client.
 

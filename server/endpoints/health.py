@@ -1,5 +1,7 @@
 """Health check endpoint implementation."""
 
+from typing import Any
+
 import structlog
 from fastapi import APIRouter, Depends, Request
 
@@ -9,13 +11,15 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-def get_server_state(request: Request) -> ServerState:
+def get_server_state(request: Request) -> Any:
     """Dependency to get server state from app state."""
     return request.app.state.server_state
 
 
 @router.get("/health")
-async def health_check(state: ServerState = Depends(get_server_state)):
+async def health_check(
+    state: ServerState = Depends(get_server_state),
+) -> dict[str, Any]:
     """
     Health check endpoint.
 

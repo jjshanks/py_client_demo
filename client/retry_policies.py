@@ -7,7 +7,7 @@ jitter, and custom exception-based triggering aligned with our exception hierarc
 
 import logging
 import uuid
-from typing import Callable, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 from tenacity import (
     retry,
@@ -22,7 +22,9 @@ from .exceptions import APIConnectionError
 T = TypeVar("T")
 
 
-def create_retry_decorator(config: RetryConfig, request_id: str = None):
+def create_retry_decorator(
+    config: RetryConfig, request_id: Optional[str] = None
+) -> Any:
     """
     Create a tenacity retry decorator configured for our client.
 
@@ -39,7 +41,7 @@ def create_retry_decorator(config: RetryConfig, request_id: str = None):
     if request_id is None:
         request_id = str(uuid.uuid4())
 
-    def log_retry_attempt(retry_state):
+    def log_retry_attempt(retry_state: Any) -> None:
         """Custom logging for retry attempts."""
         if retry_state.outcome and retry_state.outcome.failed:
             exception = retry_state.outcome.exception()
@@ -55,7 +57,7 @@ def create_retry_decorator(config: RetryConfig, request_id: str = None):
 
     # Configure wait strategy
     if config.jitter:
-        wait_strategy = wait_random_exponential(
+        wait_strategy: Any = wait_random_exponential(
             multiplier=config.multiplier,
             min=config.min_wait_seconds,
             max=config.max_wait_seconds,
@@ -95,7 +97,7 @@ class RetryPolicy:
         self.logger = logging.getLogger(f"{__name__}.RetryPolicy")
 
     def wrap_operation(
-        self, func: Callable[..., T], request_id: str = None
+        self, func: Callable[..., T], request_id: Optional[str] = None
     ) -> Callable[..., T]:
         """
         Wrap an async operation with retry logic.
@@ -108,4 +110,4 @@ class RetryPolicy:
             Function wrapped with retry decorator
         """
         retry_decorator = create_retry_decorator(self.config, request_id)
-        return retry_decorator(func)
+        return retry_decorator(func)  # type: ignore[no-any-return]

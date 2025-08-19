@@ -9,9 +9,10 @@ a service is determined to be unhealthy.
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable
 from enum import Enum
 from functools import wraps
-from typing import Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 from .config import CircuitBreakerConfig
 from .exceptions import APIConnectionError
@@ -44,7 +45,9 @@ class CircuitBreaker:
         self.lock = asyncio.Lock()
         self.logger = logging.getLogger(f"{__name__}.CircuitBreaker")
 
-    async def call(self, func: Callable[..., T], *args, **kwargs) -> T:
+    async def call(
+        self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any
+    ) -> T:
         """
         Execute a function call protected by the circuit breaker.
 
@@ -62,7 +65,11 @@ class CircuitBreaker:
         async with self.lock:
             # Check if we should fail fast
             if self.state == CircuitState.OPEN:
-                if time.time() - self.last_failure_time < self.config.recovery_timeout:
+                if (
+                    self.last_failure_time is not None
+                    and time.time() - self.last_failure_time
+                    < self.config.recovery_timeout
+                ):
                     # Still in timeout period, fail fast
                     raise APIConnectionError("Circuit breaker is OPEN - failing fast")
                 else:
@@ -112,7 +119,7 @@ class CircuitBreaker:
             raise
 
 
-def circuit_breaker(config: CircuitBreakerConfig):
+def circuit_breaker(config: CircuitBreakerConfig) -> Any:
     """
     Decorator to apply circuit breaker protection to async functions.
 
@@ -124,9 +131,9 @@ def circuit_breaker(config: CircuitBreakerConfig):
     """
     breaker = CircuitBreaker(config)
 
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
-        async def wrapper(*args, **kwargs) -> T:
+        async def wrapper(*args: Any, **kwargs: Any) -> T:
             return await breaker.call(func, *args, **kwargs)
 
         return wrapper

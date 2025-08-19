@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -14,12 +14,12 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-def get_server_state(request: Request) -> ServerState:
+def get_server_state(request: Request) -> Any:
     """Dependency to get server state from app state."""
     return request.app.state.server_state
 
 
-def get_idempotency_cache(request: Request) -> IdempotencyCache:
+def get_idempotency_cache(request: Request) -> Any:
     """Dependency to get idempotency cache from app state."""
     return request.app.state.idempotency_cache
 
@@ -32,7 +32,7 @@ async def get_message(
     x_request_id: Optional[str] = Header(None, alias="X-Request-ID"),
     state: ServerState = Depends(get_server_state),
     cache: IdempotencyCache = Depends(get_idempotency_cache),
-):
+) -> dict[str, str]:
     """
     Core endpoint that returns a message with a unique UUID.
 

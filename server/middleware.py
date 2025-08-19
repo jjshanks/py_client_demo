@@ -3,7 +3,8 @@
 import asyncio
 import time
 import uuid
-from typing import Callable
+from collections.abc import Awaitable
+from typing import Any, Callable
 
 import structlog
 from fastapi import HTTPException, Request, Response
@@ -16,11 +17,13 @@ logger = structlog.get_logger()
 class ConcurrencyMiddleware(BaseHTTPMiddleware):
     """Middleware to limit concurrent requests using a semaphore."""
 
-    def __init__(self, app, semaphore: asyncio.Semaphore):
+    def __init__(self, app: Any, semaphore: asyncio.Semaphore) -> None:
         super().__init__(app)
         self.semaphore = semaphore
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         # Skip concurrency limiting for health check
         if request.url.path == "/health":
             return await call_next(request)
@@ -55,11 +58,13 @@ class ConcurrencyMiddleware(BaseHTTPMiddleware):
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Middleware to enforce request timeouts."""
 
-    def __init__(self, app, timeout_seconds: int):
+    def __init__(self, app: Any, timeout_seconds: int) -> None:
         super().__init__(app)
         self.timeout_seconds = timeout_seconds
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         # Skip timeout for health check (should always be fast)
         if request.url.path == "/health":
             return await call_next(request)
@@ -83,7 +88,9 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware for structured request/response logging."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         # Generate correlation ID for this request
         correlation_id = str(uuid.uuid4())
 
@@ -143,7 +150,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """Middleware for consistent error handling and responses."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         try:
             return await call_next(request)
         except HTTPException:

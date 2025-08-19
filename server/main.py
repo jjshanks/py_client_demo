@@ -1,6 +1,7 @@
 """Main FastAPI application with lifespan management and CLI."""
 
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -30,7 +31,7 @@ concurrency_semaphore: Optional[asyncio.Semaphore] = None
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """FastAPI lifespan context manager for startup and shutdown."""
     global server_state, idempotency_cache, config
 
@@ -155,7 +156,7 @@ def serve(
     log_format: Optional[str] = typer.Option(None, help="Log format (json, console)"),
     reload: bool = typer.Option(False, help="Enable auto-reload for development"),
     workers: int = typer.Option(1, help="Number of worker processes"),
-):
+) -> None:
     """Start the FastAPI test server."""
 
     # Override environment config with CLI arguments if provided
@@ -191,7 +192,7 @@ def serve(
 
 
 @cli.command()
-def config_info():
+def config_info() -> None:
     """Display current configuration."""
     config = get_config()
 

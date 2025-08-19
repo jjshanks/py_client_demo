@@ -127,13 +127,13 @@ class TTLCache:
         async with self._lock:
             return len(self._data)
 
-    async def stats(self) -> dict:
+    async def stats(self) -> dict[str, Any]:
         """Get cache statistics for monitoring."""
         async with self._lock:
             current_time = time.time()
             expired_count = 0
-            oldest_entry_age = 0
-            newest_entry_age = 0
+            oldest_entry_age = 0.0
+            newest_entry_age = 0.0
 
             if self._data:
                 # Count expired entries without removing them
@@ -212,6 +212,6 @@ class IdempotencyCache:
         """Clear all cached responses."""
         await self._cache.clear()
 
-    async def stats(self) -> dict:
+    async def stats(self) -> dict[str, Any]:
         """Get cache statistics."""
         return await self._cache.stats()

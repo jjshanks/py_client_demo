@@ -64,7 +64,7 @@ class ServerConfig(BaseSettings):
 
     @field_validator("cors_origins")
     @classmethod
-    def validate_cors_origins(cls, v):
+    def validate_cors_origins(cls, v: Optional[str]) -> Optional[list[str]]:
         """Convert comma-separated string to list."""
         if v is None:
             return None

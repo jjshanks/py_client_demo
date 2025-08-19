@@ -2,7 +2,7 @@
 
 import logging
 import sys
-from typing import Any
+from typing import Any, Optional
 
 import structlog
 from structlog.types import EventDict
@@ -43,7 +43,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
     )
 
     # Configure structlog processors
-    shared_processors = [
+    shared_processors: list[Any] = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -56,7 +56,9 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
 
     if log_format == "json":
         # JSON logging for production
-        processors = shared_processors + [structlog.processors.JSONRenderer()]
+        processors: list[Any] = shared_processors + [
+            structlog.processors.JSONRenderer()
+        ]
     else:
         # Console logging for development
         processors = shared_processors + [
@@ -78,7 +80,7 @@ def setup_logging(log_level: str = "INFO", log_format: str = "json") -> None:
         logging.getLogger("fastapi").setLevel(logging.WARNING)
 
 
-def get_logger(name: str = None) -> structlog.BoundLogger:
+def get_logger(name: Optional[str] = None) -> Any:
     """Get a structured logger instance."""
     return structlog.get_logger(name)
 
@@ -94,6 +96,6 @@ class LoggingConfig:
     CONCURRENCY = "concurrency.management"
 
     @staticmethod
-    def get_component_logger(component: str) -> structlog.BoundLogger:
+    def get_component_logger(component: str) -> Any:
         """Get a logger bound to a specific component."""
         return structlog.get_logger(component)

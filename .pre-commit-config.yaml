@@ -26,5 +26,5 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        additional_dependencies: [pydantic, fastapi, structlog]
-        files: ^server/
+        additional_dependencies: [pydantic, fastapi, structlog, httpx, tenacity, typer, uvicorn, types-requests]
+        files: ^(server|client)/

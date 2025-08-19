@@ -1,5 +1,7 @@
 """Failure injection endpoints for testing client resilience."""
 
+from typing import Any
+
 import structlog
 from fastapi import APIRouter, Depends, Path, Request
 
@@ -9,7 +11,7 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/fail", tags=["failure-injection"])
 
 
-def get_server_state(request: Request) -> ServerState:
+def get_server_state(request: Request) -> Any:
     """Dependency to get server state from app state."""
     return request.app.state.server_state
 
@@ -20,7 +22,7 @@ async def set_failure_count(
         ..., description="Number of requests that should fail", ge=0, le=1000
     ),
     state: ServerState = Depends(get_server_state),
-):
+) -> dict[str, Any]:
     """
     Configure the server to fail for a specific number of subsequent requests.
 
@@ -50,7 +52,7 @@ async def set_failure_duration(
         le=3600,
     ),
     state: ServerState = Depends(get_server_state),
-):
+) -> dict[str, Any]:
     """
     Configure the server to fail for a specific duration.
 
@@ -72,7 +74,9 @@ async def set_failure_duration(
 
 
 @router.post("/reset")
-async def reset_failures(state: ServerState = Depends(get_server_state)):
+async def reset_failures(
+    state: ServerState = Depends(get_server_state),
+) -> dict[str, str]:
     """
     Reset all failure configurations.
 
@@ -90,7 +94,9 @@ async def reset_failures(state: ServerState = Depends(get_server_state)):
 
 
 @router.get("/status")
-async def get_failure_status(state: ServerState = Depends(get_server_state)):
+async def get_failure_status(
+    state: ServerState = Depends(get_server_state),
+) -> dict[str, Any]:
     """
     Get the current failure injection status.
 

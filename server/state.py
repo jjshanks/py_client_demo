@@ -3,7 +3,7 @@
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -21,7 +21,7 @@ class FailureConfig:
 class FailureStateManager:
     """Thread-safe manager for failure injection state."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._config = FailureConfig()
         self._lock = asyncio.Lock()
 
@@ -95,14 +95,14 @@ class FailureStateManager:
             self._config.fail_until_timestamp = None
             logger.info("All failure modes reset")
 
-    async def get_status(self) -> dict:
+    async def get_status(self) -> dict[str, Any]:
         """Get current failure state for debugging/monitoring."""
         async with self._lock:
             current_time = time.time()
-            duration_remaining = 0
+            duration_remaining = 0.0
             if self._config.fail_until_timestamp:
                 duration_remaining = max(
-                    0, self._config.fail_until_timestamp - current_time
+                    0.0, self._config.fail_until_timestamp - current_time
                 )
 
             return {
@@ -126,7 +126,7 @@ class FailureStateManager:
 class ServerState:
     """Global server state container."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.failure_manager = FailureStateManager()
         self.concurrency_semaphore: Optional[asyncio.Semaphore] = None
         self._startup_time = time.time()
